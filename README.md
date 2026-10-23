@@ -20,8 +20,8 @@ distribuye instaladores. Un commit no actualiza las instalaciones por sí solo.
 - `config/`: ajustes de distribución, sin el dispositivo de audio personal.
 - `installer/`: instalador Inno Setup con elección de directorio.
 - `tools/`: herramientas de construcción, parches y antecedentes de ingeniería.
-  Los scripts antiguos `package_*` quedan como fuentes históricas; el único
-  punto de distribución nuevo es `tools/build_installer.py`.
+  Las recetas antiguas están retiradas en `legacy-source/distribution/`;
+  el único punto de distribución nuevo es `tools/build_installer.py`.
 
 No se incluyen imágenes del juego, BIOS, ejecutables, credenciales, partidas,
 entornos Python ni compilaciones. Se conservan las licencias de cada componente.

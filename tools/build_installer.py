@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--runtime', type=Path, required=True)
-    parser.add_argument('--iscc', type=Path, required=True)
+    parser.add_argument('--iscc', type=Path)
+    parser.add_argument('--stage-only', action='store_true', help='Prepare and verify payload without running Inno Setup')
     parser.add_argument('--skip-freeze', action='store_true')
     args = parser.parse_args()
     payload = ROOT/'build/payload'; payload.mkdir(parents=True, exist_ok=True)
@@ -49,6 +50,11 @@ def main():
         if path.suffix.lower() in ('.bin', '.cue', '.iso', '.rom'):
             raise ValueError('Unexpected game/BIOS file in payload: ' + str(path))
     version = (ROOT/'VERSION').read_text().strip()
+    if args.stage_only:
+        print(json.dumps(dict(payload=str(payload), version=version, game_images_included=False)))
+        return
+    if not args.iscc or not args.iscc.is_file():
+        raise FileNotFoundError('Install Inno Setup and supply --iscc path/to/ISCC.exe')
     subprocess.run([str(args.iscc.resolve()), f'/DAppVersion={version}',
         f'/DPayloadDir={payload}', str(ROOT/'installer/TM3Online.iss')], check=True)
     exe = ROOT/'dist/TM3Online-Setup.exe'

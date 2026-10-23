@@ -12,4 +12,4 @@ jobs:
       - name: Protocol and lobby regression
         env:
           PYTHONPATH: network
-        run: python -m unittest network.test_system256_peer_cable network.test_lobby_client network.test_release_updater
+        run: python -m unittest discover -s network -p 'test_*.py'

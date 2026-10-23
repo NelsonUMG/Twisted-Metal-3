@@ -104,7 +104,13 @@ def run(args):
     history = deque(maxlen=240)
     log_directory = Path(args.log_directory) if args.log_directory else state_path.parent
     history_path = log_directory / 'LOG_TM3_ONLINE.txt'
+    status_lock = threading.RLock()
     def status(state, **extra):
+        # Role events arrive on the receiver/core threads while the UI also
+        # publishes its heartbeat. Serialize the shared .tmp -> state replace.
+        with status_lock:
+            write_status(state, **extra)
+    def write_status(state, **extra):
         value = dict(state=state, engine='SYSTEM256-CABLE-P2P1', real_transport=True,
                      one_console_per_pc=True, pid=os.getpid())
         value.update(extra)
@@ -289,9 +295,15 @@ def run(args):
         link.cable = cable
         if True:
             recording = qa_recording[args.side] if qa_recording else None
+            qa_input_events = deque(maxlen=256)
+            qa_last_input = [None]
             def local_inputs(_role, frame):
                 packed = (recording[frame] if recording and frame < len(recording)
                           else 0 if recording else sample(frame))
+                if qa_recording and packed != qa_last_input[0] and cores and not cable.gameplay:
+                    qa_input_events.append(dict(frame=frame, monotonic=time.monotonic(),
+                                                mask=packed, menu=hex(cores[0].word(0x89a0c))))
+                qa_last_input[0] = packed
                 return packed & 0xFFFF, (packed >> 16) & 0xFFFF
             resolution = args.qa_resolution or option('Resolution', 1)
             if resolution not in (1,2,4): resolution = 1
@@ -404,6 +416,8 @@ def run(args):
                 try:
                     while not stop.is_set() and not cable.stopped:
                         core.step()
+                        if args.qa_screenshot and core.transitions and core.transitions[-1]['frame'] == core.frame:
+                            core.screenshot(str(Path(args.qa_screenshot).with_name(f'menu{args.side}_{core.frame}.bmp')))
                         is_main_menu = core.word(0x89a0c) == main_menu
                         if is_main_menu and not was_main_menu and cable.gameplay:
                             cable.reset_role_cycle()
@@ -507,6 +521,7 @@ def run(args):
                               video_adapter=video_adapter,
                               role_events=list(cable.role_events),
                               menu_transitions=list(core.transitions),
+                              input_events=list(qa_input_events),
                               rate=(qa_times[-1][1]-qa_times[0][1])/(qa_times[-1][0]-qa_times[0][0]) if len(qa_times)==2 else 0)
                 Path(args.qa_report).write_text(json.dumps(report, indent=2))
     except Exception as exc:

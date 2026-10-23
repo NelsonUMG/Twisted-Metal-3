@@ -1,0 +1,562 @@
+{
+  "unit_tests_passed": 120,
+  "external_wan": false,
+  "cases": [
+    {
+      "name": "frozen_github_online",
+      "passed": true,
+      "ticks": [
+        600,
+        600
+      ],
+      "rates": [
+        29.981365161382357,
+        29.906507849189573
+      ],
+      "time_mismatches": [
+        0,
+        0
+      ],
+      "rng_mismatches": [
+        0,
+        0
+      ],
+      "audio_started": [
+        true,
+        true
+      ],
+      "selected_route": {
+        "local_type": "host",
+        "remote_type": "host",
+        "ip_version": 4
+      }
+    },
+    {
+      "name": "frozen_github_status_lock",
+      "passed": true,
+      "ticks": [
+        600,
+        600
+      ],
+      "rates": [
+        29.971459441129234,
+        29.89711819422385
+      ],
+      "time_mismatches": [
+        0,
+        0
+      ],
+      "rng_mismatches": [
+        0,
+        0
+      ],
+      "audio_started": [
+        true,
+        true
+      ],
+      "selected_route": {
+        "local_type": "host",
+        "remote_type": "host",
+        "ip_version": 4
+      }
+    },
+    {
+      "name": "retry_after_disconnect",
+      "passed": true,
+      "ticks": [
+        600,
+        600
+      ],
+      "rates": [
+        29.97004635829839,
+        29.908268977865518
+      ],
+      "time_mismatches": [
+        0,
+        0
+      ],
+      "rng_mismatches": [
+        0,
+        0
+      ],
+      "audio_started": [
+        true,
+        true
+      ],
+      "selected_route": {
+        "local_type": "host",
+        "remote_type": "host",
+        "ip_version": 4
+      }
+    },
+    {
+      "name": "host_first",
+      "validation": {
+        "order_ok": true,
+        "first_side": 0,
+        "first_role": 2,
+        "local_yes": [
+          {
+            "event": "local_yes",
+            "monotonic": 4416.335343,
+            "side": 0,
+            "local_round": 1,
+            "remote_round": 0,
+            "frame": 2043
+          },
+          {
+            "event": "local_yes",
+            "monotonic": 4451.369937,
+            "side": 1,
+            "local_round": 1,
+            "remote_round": 1,
+            "frame": 4143
+          }
+        ],
+        "completed": [
+          {
+            "event": "role_completed",
+            "monotonic": 4451.377729,
+            "side": 0,
+            "local_round": 1,
+            "remote_round": 1,
+            "wait_seconds": 35.042,
+            "frame": 4143
+          },
+          {
+            "event": "role_completed",
+            "monotonic": 4451.372086,
+            "side": 1,
+            "local_round": 1,
+            "remote_round": 1,
+            "wait_seconds": 0.002,
+            "frame": 4143
+          }
+        ],
+        "wait_seconds": 35.042,
+        "over_minimum": true,
+        "first_reused": [
+          [
+            {
+              "event": "role_reused",
+              "monotonic": 4456.391305,
+              "side": 0,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 4444
+            },
+            {
+              "event": "role_reused",
+              "monotonic": 4464.812205,
+              "side": 0,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 4839
+            }
+          ],
+          [
+            {
+              "event": "role_reused",
+              "monotonic": 4462.414825,
+              "side": 1,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 4805
+            },
+            {
+              "event": "role_reused",
+              "monotonic": 4469.023466,
+              "side": 1,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 5201
+            }
+          ]
+        ],
+        "selection_confirm_inputs": [
+          [
+            {
+              "frame": 4425,
+              "monotonic": 4456.0737073,
+              "mask": 1,
+              "menu": "0x80080494"
+            }
+          ],
+          [
+            {
+              "frame": 4785,
+              "monotonic": 4462.0813985,
+              "mask": 1,
+              "menu": "0x80080494"
+            }
+          ]
+        ],
+        "selection_first": 0,
+        "selection_order_ok": true,
+        "passed": true
+      },
+      "rates": [
+        29.51730838419033,
+        29.603947054199306
+      ]
+    },
+    {
+      "name": "guest_first",
+      "validation": {
+        "order_ok": true,
+        "first_side": 1,
+        "first_role": 1,
+        "local_yes": [
+          {
+            "event": "local_yes",
+            "monotonic": 4566.191479,
+            "side": 0,
+            "local_round": 1,
+            "remote_round": 1,
+            "frame": 4143
+          },
+          {
+            "event": "local_yes",
+            "monotonic": 4531.155568,
+            "side": 1,
+            "local_round": 1,
+            "remote_round": 0,
+            "frame": 2043
+          }
+        ],
+        "completed": [
+          {
+            "event": "role_completed",
+            "monotonic": 4566.194601,
+            "side": 0,
+            "local_round": 1,
+            "remote_round": 1,
+            "wait_seconds": 0.003,
+            "frame": 4143
+          },
+          {
+            "event": "role_completed",
+            "monotonic": 4566.201692,
+            "side": 1,
+            "local_round": 1,
+            "remote_round": 1,
+            "wait_seconds": 35.046,
+            "frame": 4144
+          }
+        ],
+        "wait_seconds": 35.046,
+        "over_minimum": true,
+        "first_reused": [
+          [
+            {
+              "event": "role_reused",
+              "monotonic": 4571.229412,
+              "side": 0,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 4445
+            },
+            {
+              "event": "role_reused",
+              "monotonic": 4577.871234,
+              "side": 0,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 4843
+            }
+          ],
+          [
+            {
+              "event": "role_reused",
+              "monotonic": 4569.227064,
+              "side": 1,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 4325
+            },
+            {
+              "event": "role_reused",
+              "monotonic": 4575.851359,
+              "side": 1,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 4722
+            }
+          ]
+        ],
+        "selection_confirm_inputs": [
+          [
+            {
+              "frame": 4425,
+              "monotonic": 4570.8946242,
+              "mask": 1,
+              "menu": "0x80080494"
+            }
+          ],
+          [
+            {
+              "frame": 4305,
+              "monotonic": 4568.8924307,
+              "mask": 1,
+              "menu": "0x80080494"
+            }
+          ]
+        ],
+        "selection_first": 1,
+        "selection_order_ok": true,
+        "passed": true
+      },
+      "rates": [
+        29.970686302688833,
+        29.904538260787042
+      ]
+    },
+    {
+      "name": "crossed_host_first",
+      "validation": {
+        "order_ok": true,
+        "first_side": 0,
+        "first_role": 2,
+        "local_yes": [
+          {
+            "event": "local_yes",
+            "monotonic": 4666.179227,
+            "side": 0,
+            "local_round": 1,
+            "remote_round": 0,
+            "frame": 2043
+          },
+          {
+            "event": "local_yes",
+            "monotonic": 4667.680026,
+            "side": 1,
+            "local_round": 1,
+            "remote_round": 1,
+            "frame": 2133
+          }
+        ],
+        "completed": [
+          {
+            "event": "role_completed",
+            "monotonic": 4667.687556,
+            "side": 0,
+            "local_round": 1,
+            "remote_round": 1,
+            "wait_seconds": 1.508,
+            "frame": 2134
+          },
+          {
+            "event": "role_completed",
+            "monotonic": 4667.682145,
+            "side": 1,
+            "local_round": 1,
+            "remote_round": 1,
+            "wait_seconds": 0.002,
+            "frame": 2133
+          }
+        ],
+        "wait_seconds": 1.508,
+        "over_minimum": true,
+        "first_reused": [
+          [
+            {
+              "event": "role_reused",
+              "monotonic": 4672.702102,
+              "side": 0,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 2434
+            },
+            {
+              "event": "role_reused",
+              "monotonic": 4679.294338,
+              "side": 0,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 2829
+            }
+          ],
+          [
+            {
+              "event": "role_reused",
+              "monotonic": 4670.716214,
+              "side": 1,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 2315
+            },
+            {
+              "event": "role_reused",
+              "monotonic": 4677.307775,
+              "side": 1,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 2710
+            }
+          ]
+        ],
+        "selection_confirm_inputs": [
+          [
+            {
+              "frame": 2415,
+              "monotonic": 4672.3839284,
+              "mask": 1,
+              "menu": "0x80080494"
+            }
+          ],
+          [
+            {
+              "frame": 2295,
+              "monotonic": 4670.3807251,
+              "mask": 1,
+              "menu": "0x80080494"
+            }
+          ]
+        ],
+        "selection_first": 1,
+        "selection_order_ok": true,
+        "passed": true
+      },
+      "rates": [
+        29.970312512594266,
+        29.910273430116693
+      ]
+    },
+    {
+      "name": "crossed_guest_first",
+      "validation": {
+        "order_ok": true,
+        "first_side": 1,
+        "first_role": 1,
+        "local_yes": [
+          {
+            "event": "local_yes",
+            "monotonic": 4739.19443,
+            "side": 0,
+            "local_round": 1,
+            "remote_round": 1,
+            "frame": 2133
+          },
+          {
+            "event": "local_yes",
+            "monotonic": 4737.693769,
+            "side": 1,
+            "local_round": 1,
+            "remote_round": 0,
+            "frame": 2043
+          }
+        ],
+        "completed": [
+          {
+            "event": "role_completed",
+            "monotonic": 4739.197504,
+            "side": 0,
+            "local_round": 1,
+            "remote_round": 1,
+            "wait_seconds": 0.003,
+            "frame": 2133
+          },
+          {
+            "event": "role_completed",
+            "monotonic": 4739.204399,
+            "side": 1,
+            "local_round": 1,
+            "remote_round": 1,
+            "wait_seconds": 1.511,
+            "frame": 2134
+          }
+        ],
+        "wait_seconds": 1.511,
+        "over_minimum": true,
+        "first_reused": [
+          [
+            {
+              "event": "role_reused",
+              "monotonic": 4744.233154,
+              "side": 0,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 2435
+            },
+            {
+              "event": "role_reused",
+              "monotonic": 4752.698952,
+              "side": 0,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 2828
+            }
+          ],
+          [
+            {
+              "event": "role_reused",
+              "monotonic": 4750.221361,
+              "side": 1,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 2794
+            },
+            {
+              "event": "role_reused",
+              "monotonic": 4756.779845,
+              "side": 1,
+              "local_round": 1,
+              "remote_round": 1,
+              "frame": 3187
+            }
+          ]
+        ],
+        "selection_confirm_inputs": [
+          [
+            {
+              "frame": 2415,
+              "monotonic": 4743.8991925,
+              "mask": 1,
+              "menu": "0x80080494"
+            }
+          ],
+          [
+            {
+              "frame": 2775,
+              "monotonic": 4749.9039182,
+              "mask": 1,
+              "menu": "0x80080494"
+            }
+          ]
+        ],
+        "selection_first": 0,
+        "selection_order_ok": true,
+        "passed": true
+      },
+      "rates": [
+        29.540552873823298,
+        29.60631689534913
+      ]
+    },
+    {
+      "name": "disconnect_during_real_waiting",
+      "passed": true,
+      "seconds_after_disconnect": 0.4062213999995947,
+      "exit_codes": [
+        1,
+        1
+      ]
+    },
+    {
+      "name": "frozen_disconnect_during_real_waiting",
+      "passed": true,
+      "seconds_after_disconnect": 0.8068880999999237,
+      "exit_codes": [
+        1,
+        1
+      ]
+    }
+  ],
+  "pending": [
+    "full_map_cycle_and_second_game",
+    "cancel_retry_real_menu",
+    "installer_execution",
+    "real_release_upgrade",
+    "physical_remote_audio"
+  ]
+}

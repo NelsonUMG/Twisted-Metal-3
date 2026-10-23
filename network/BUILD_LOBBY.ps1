@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param([string]$Context = 'diagnostics/link_pause_v1/runs/SqrtMergeV4_PacingV1_LinkBoundaryV1_LinkWakeV1_20261019_170456_605_21305ed3/TEST_CONTEXT.json')
 $ErrorActionPreference = 'Stop'
+throw 'Receta antigua retirada. Usa python tools/build_installer.py --runtime <runtime> --iscc <ISCC.exe> desde la raíz del repositorio.'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $package = Join-Path $projectRoot 'TM3Online_Lobby'
 $build = Join-Path $projectRoot 'diagnostics/lobby_exe_build'

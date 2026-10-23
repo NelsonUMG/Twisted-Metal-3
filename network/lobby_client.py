@@ -33,7 +33,7 @@ DATA = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "TM3Online" / "Lobby"
 
 
 def load_config():
-    for path in (ROOT / "TM3Lobby.json", ROOT / "network/lobby_config.json"):
+    for path in (ROOT / "TM3Lobby.json", ROOT / "config/TM3Lobby.json", ROOT / "network/lobby_config.json"):
         try:
             config = json.loads(path.read_text(encoding="utf-8-sig"))
             if PUBLIC_DIRECTORY_URL and 'directory_url' not in config:

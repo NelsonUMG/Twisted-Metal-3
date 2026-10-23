@@ -20,3 +20,13 @@ Estos pendientes impiden llamar a esta migración una distribución final valida
 
 Los ZIP y respaldos se eliminan sólo después de comprobar que sus fuentes únicas
 están importadas y de confirmar que el commit está también en origin.
+
+La importación completa quedó confirmada en origin/main (commit inicial 05704d5).
+La revisión automática rechazó eliminar los archivos ZIP/RAR de la raíz: siguen
+en disco. También rechazó instalar Inno Setup. No se usó otra vía para ejecutar
+ninguna de esas dos acciones. La instalación jugable anterior no se sustituyó.
+
+Resultados medidos en docs/ONLINE_QA_20261023.json. Se detectó y corrigió la
+escritura simultánea de status entre los hilos de rol y UI. La entrada frozen
+captura los fallos del motor y preserva su informe para que una desconexión
+esperada no abra el diálogo genérico de excepción de PyInstaller.

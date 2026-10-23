@@ -37,12 +37,15 @@ def start_runtime(side, bridge, assets, settings, fixture, output, frozen_exe=No
     state = output / f'state{side}.json'
     report = output / f'report{side}.json'
     screenshot = output / f'game{side}.bmp'
+    log_directory = output / f'console{side}'
+    log_directory.mkdir(parents=True, exist_ok=True)
     command = ([str(frozen_exe), '--system256'] if frozen_exe else
         [sys.executable, str(ROOT/'network/system256_runtime.py')])
     command += ['--port', str(bridge.port), '--key', bridge.key.hex(), '--epoch', str(bridge.epoch),
         '--side', str(side), '--assets', str(assets), '--settings', str(settings),
         '--state', str(state), '--qa-fixture', str(fixture), '--qa-report', str(report),
-        '--qa-screenshot', str(screenshot), '--qa-resolution', '1']
+        '--qa-screenshot', str(screenshot), '--qa-resolution', '1',
+        '--log-directory', str(log_directory)]
     environment = os.environ.copy()
     python_path = [str(ROOT/'network'), str(ROOT/'256mb system/src')]
     if environment.get('PYTHONPATH'):

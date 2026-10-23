@@ -27,7 +27,27 @@ def main():
     if '--system256' in sys.argv:
         sys.argv.remove('--system256')
         from system256_runtime import main as run_engine
-        run_engine()
+        try:
+            run_engine()
+        except Exception as exc:
+            # Runtime failures are reported to the lobby through the session
+            # file. Do not turn a normal peer disconnect into a PyInstaller
+            # unhandled-exception dialog. Also cover audio/video init failures
+            # which can occur before the runtime's main try/finally block.
+            import traceback
+            try:
+                state_path = Path(sys.argv[sys.argv.index('--state') + 1])
+                current = json.loads(state_path.read_text(encoding='utf-8')) if state_path.exists() else {}
+                if current.get('state') != 'failed':
+                    log_directory = (Path(sys.argv[sys.argv.index('--log-directory') + 1])
+                                     if '--log-directory' in sys.argv else state_path.parent)
+                    error_path = log_directory/'ERROR_TM3_ONLINE.txt'
+                    error_path.write_text(traceback.format_exc(), encoding='utf-8-sig')
+                    current.update(state='failed', error=str(exc), error_log=str(error_path))
+                    state_path.write_text(json.dumps(current), encoding='utf-8')
+            except Exception:
+                pass
+            return 1
         return 0
     if '--check-directory' in sys.argv:
         from rooms_probe import run_check

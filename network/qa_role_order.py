@@ -17,7 +17,7 @@ def insert_pause(recording, frame, frames):
     return recording[:frame] + [0] * frames + recording[frame:]
 
 
-def make_fixture(first_side, wait_frames, output):
+def make_fixture(first_side, wait_frames, output, crossed=False):
     fixture = json.loads(DEFAULT_FIXTURE.read_text())
     other = 1 - first_side
     # The first console performs its recorded YES press and then remains idle;
@@ -27,7 +27,8 @@ def make_fixture(first_side, wait_frames, output):
         fixture['input_recording'][first_side], YES_RELEASE, wait_frames)
     fixture['input_recording'][other] = insert_pause(
         fixture['input_recording'][other], YES_FRAME, wait_frames)
-    selection_delay_frames = 240 if first_side == 0 else 0
+    selection_first = 1 - first_side if crossed else first_side
+    selection_delay_frames = 600 if selection_first == 0 else 0
     if selection_delay_frames:
         # Side 1 reaches the following selection sooner in the reference path.
         # Hold it after YES so side 0's next native menu confirmation is first.
@@ -40,7 +41,8 @@ def make_fixture(first_side, wait_frames, output):
     output.write_text(json.dumps(fixture), encoding='utf-8')
 
 
-def validate(result, first_side, minimum_wait):
+def validate(result, first_side, minimum_wait, selection_first=None):
+    if selection_first is None: selection_first = first_side
     reports = result['reports']
     local = [[e for e in report['role_events'] if e['event'] == 'local_yes'][0]
              for report in reports]
@@ -50,12 +52,17 @@ def validate(result, first_side, minimum_wait):
     waited = completed[first_side]['wait_seconds']
     reused = [[e for e in report['role_events'] if e['event'] == 'role_reused']
               for report in reports]
-    selection_order_ok = (reused[first_side] and reused[1-first_side] and
-                          reused[first_side][0]['monotonic'] < reused[1-first_side][0]['monotonic'])
+    confirms = [[e for e in report.get('input_events', [])
+                 if e['menu'] == '0x80080494' and e['mask'] & 1]
+                for report in reports]
+    selection_order_ok = (confirms[selection_first] and confirms[1-selection_first] and
+                         confirms[selection_first][0]['monotonic'] < confirms[1-selection_first][0]['monotonic'])
     return dict(order_ok=order_ok, first_side=first_side,
                 first_role=2 if first_side == 0 else 1,
                 local_yes=local, completed=completed, wait_seconds=waited,
                 over_minimum=waited >= minimum_wait, first_reused=reused,
+                selection_confirm_inputs=confirms,
+                selection_first=selection_first,
                 selection_order_ok=bool(selection_order_ok),
                 passed=result['passed'] and order_ok and waited >= minimum_wait and selection_order_ok)
 
@@ -69,6 +76,7 @@ def main():
     parser.add_argument('--assets', default=str(DEFAULT_ASSETS))
     parser.add_argument('--settings', default=str(DEFAULT_SETTINGS))
     parser.add_argument('--frozen-exe')
+    parser.add_argument('--crossed', action='store_true')
     args = parser.parse_args()
     output = Path(args.output).resolve(); output.mkdir(parents=True, exist_ok=True)
     results = []
@@ -76,12 +84,13 @@ def main():
         case = output / ('host_first' if first_side == 0 else 'guest_first')
         case.mkdir()
         fixture = case / 'fixture.json'
-        make_fixture(first_side, args.wait_frames, fixture)
+        make_fixture(first_side, args.wait_frames, fixture, args.crossed)
         try:
             result = run(SimpleNamespace(output=str(case), assets=args.assets,
                 settings=args.settings, fixture=str(fixture), frozen_exe=args.frozen_exe,
                 timeout=args.timeout))
-            validation = validate(result, first_side, args.minimum_wait)
+            validation = validate(result, first_side, args.minimum_wait,
+                                  1-first_side if args.crossed else first_side)
             results.append(dict(case=case.name, validation=validation,
                                 reports=result['reports'], ice=result['ice']))
         except Exception as exc:
