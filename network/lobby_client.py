@@ -29,7 +29,8 @@ import lobby_language as loc
 from directory_defaults import PUBLIC_DIRECTORY_URL
 
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-DATA = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "TM3Online" / "Lobby"
+DATA = (Path(os.environ['TM3_DATA_DIR']) if os.environ.get('TM3_DATA_DIR')
+        else Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "TM3Online" / "Lobby")
 
 
 def load_config():

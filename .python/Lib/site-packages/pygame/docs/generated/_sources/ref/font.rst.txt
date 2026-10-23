@@ -1,0 +1,389 @@
+.. include:: common.txt
+
+:mod:`pygame.font`
+==================
+
+.. module:: pygame.font
+   :synopsis: pygame module for loading and rendering fonts
+
+| :sl:`pygame module for loading and rendering fonts`
+
+The font module allows for rendering TrueType fonts into Surface objects.
+This module is built on top of the SDL_ttf library, which comes with all
+normal pygame installations.
+
+Most of the work done with fonts are done by using the actual Font objects.
+The module by itself only has routines to support the creation of Font objects
+with :func:`pygame.font.Font`.
+
+You can load fonts from the system by using the :func:`pygame.font.SysFont`
+function. There are a few other functions to help look up the system fonts.
+
+Pygame comes with a builtin default font, freesansbold. This can always be
+accessed by passing ``None`` as the font name.
+
+Before pygame 2.0.3, pygame.font accepts any UCS-2 / UTF-16 character
+('\\u0001' to '\\uFFFF'). After 2.0.3, pygame.font built with SDL_ttf
+2.0.15 accepts any valid UCS-4 / UTF-32 character
+(like emojis, if the font has them) ('\\U00000001' to '\\U0010FFFF')).
+More about this in :func:`Font.render`.
+
+Before pygame 2.0.3, this character space restriction can be avoided by
+using the  :mod:`pygame.freetype` based ``pygame.ftfont`` to emulate the Font
+module. This can be used by defining the environment variable PYGAME_FREETYPE
+before the first import of :mod:`pygame`. Since the problem ``pygame.ftfont``
+solves no longer exists, it will likely be removed in the future.
+
+.. function:: init
+
+   | :sl:`Initialize the font module.`
+   | :sg:`init() -> None`
+
+   This method is called automatically by ``pygame.init()``. It initializes the
+   font module. The module must be initialized before any other functions will
+   work.
+
+   It is safe to call this function more than once.
+
+   .. ## pygame.font.init ##
+
+.. function:: quit
+
+   | :sl:`Uninitialize the font module.`
+   | :sg:`quit() -> None`
+
+   Manually uninitialize SDL_ttf's font system. This is called automatically by
+   ``pygame.quit()``.
+
+   It is safe to call this function even if font is currently not initialized.
+
+   Previously created font objects will be invalid after the font module is quit.
+
+   .. ## pygame.font.quit ##
+
+.. function:: get_init
+
+   | :sl:`True if the font module is initialized.`
+   | :sg:`get_init() -> bool`
+
+   Test if the font module is initialized or not.
+
+   .. ## pygame.font.get_init ##
+
+.. autopgfunction:: get_default_font
+
+.. autopgfunction:: get_sdl_ttf_version
+
+.. autopgfunction:: get_fonts
+
+.. autopgfunction:: match_font
+
+.. function:: SysFont
+
+   | :sl:`Create a Font object from the system fonts.`
+   | :sg:`SysFont(name, size, bold=False, italic=False) -> Font`
+
+   Return a new Font object that is loaded from the system fonts. The font will
+   match the requested bold and italic flags. Pygame uses a small set of common
+   font aliases. If the specific font you ask for is not available, a reasonable
+   alternative may be used. If a suitable system font is not found this will
+   fall back on loading the default pygame font.
+
+   The font name can also be an iterable of font names, a string of
+   comma-separated font names, or a bytes of comma-separated font names, in
+   which case the set of names will be searched in order.
+
+   .. versionaddedold:: 2.0.1 Accept an iterable of font names.
+
+   .. versionchanged:: 2.1.3 Checks through user fonts instead of just global fonts for Windows.
+
+   .. ## pygame.font.SysFont ##
+
+.. class:: Font
+
+   | :sl:`Create a new Font object from a file.`
+   | :sg:`Font(filename=None, size=20) -> Font`
+   | :sg:`Font(filename, size) -> Font`
+   | :sg:`Font(pathlib.Path, size) -> Font`
+   | :sg:`Font(object, size) -> Font`
+
+   Load a new font from a given filename or a python file object. The size is
+   the height of the font in pixels. If the filename is ``None`` the pygame
+   default font will be loaded. If a font cannot be loaded from the arguments
+   given an exception will be raised. Once the font is created the size cannot
+   be changed.
+
+   Font objects are mainly used to render text into new Surface objects. The
+   render can emulate bold or italic features, but it is better to load from a
+   font with actual italic or bold glyphs.
+
+   .. versionchanged:: 2.1.4 If no arguments are given then the default font will be used and
+      a font size of 20 is used.
+
+   .. versionchanged:: 2.1.4 This class is also available through the ``pygame.Font``
+      alias.
+
+   .. attribute:: bold
+
+      | :sl:`Gets or sets whether the font should be rendered in (faked) bold.`
+      | :sg:`bold -> bool`
+
+      Whether the font should be rendered in bold.
+
+      When set to True, this enables the bold rendering of text. This
+      is a fake stretching of the font that doesn't look good on many
+      font types. If possible load the font from a real bold font
+      file. While bold, the font will have a different width than when
+      normal. This can be mixed with the italic, underline and
+      strikethrough modes.
+
+      .. versionaddedold:: 2.0.0
+
+      .. ## Font.bold ##
+
+   .. attribute:: name
+
+      | :sl:`Gets the font's name.`
+      | :sg:`name -> str`
+
+      Read only. Returns the font's name.
+
+      .. versionadded:: 2.2
+
+      .. ## Font.name ##
+
+   .. attribute:: style_name
+
+      | :sl:`Gets the font's style_name.`
+      | :sg:`style_name -> str`
+
+      Read only. Returns the font's style name. Style names are arbitrary, can be an empty string.
+      Here are some examples:
+
+        'Black', 'Bold', 'Bold Italic', 'BoldOblique', 'Book', 'BookOblique', 'Condensed', 'Condensed Oblique',
+        'ExtraLight', 'Italic', 'Light', 'LightOblique', 'Medium', 'MediumOblique', 'Oblique', 'Regular',
+        'Semibold', 'Semilight', 'Slanted'
+
+
+      .. versionadded:: 2.3.1
+
+      .. ## Font.style_name ##
+
+   .. attribute:: italic
+
+      | :sl:`Gets or sets whether the font should be rendered in (faked) italics.`
+      | :sg:`italic -> bool`
+
+      Whether the font should be rendered in italic.
+
+      When set to True, this enables fake rendering of italic
+      text. This is a fake skewing of the font that doesn't look good
+      on many font types. If possible load the font from a real italic
+      font file. While italic the font will have a different width
+      than when normal. This can be mixed with the bold, underline and
+      strikethrough modes.
+
+      .. versionaddedold:: 2.0.0
+
+      .. ## Font.italic ##
+
+   .. attribute:: underline
+
+      | :sl:`Gets or sets whether the font should be rendered with an underline.`
+      | :sg:`underline -> bool`
+
+      Whether the font should be rendered in underline.
+
+      When set to True, all rendered fonts will include an
+      underline. The underline is always one pixel thick, regardless
+      of font size. This can be mixed with the bold, italic and
+      strikethrough modes.
+
+      .. versionaddedold:: 2.0.0
+
+      .. ## Font.underline ##
+
+   .. attribute:: strikethrough
+
+      | :sl:`Gets or sets whether the font should be rendered with a strikethrough.`
+      | :sg:`strikethrough -> bool`
+
+      Whether the font should be rendered with a strikethrough.
+
+      When set to True, all rendered fonts will include an
+      strikethrough. The strikethrough is always one pixel thick,
+      regardless of font size. This can be mixed with the bold,
+      italic and underline modes.
+
+      .. versionadded:: 2.1.3
+
+      .. ## Font.strikethrough ##
+
+   .. attribute:: align
+
+      | :sl:`Gets or sets how rendered text is aligned when given a wrap length.`
+      | :sg:`align -> int`
+
+      Can be set to `pygame.FONT_LEFT`, `pygame.FONT_RIGHT`, or
+      `pygame.FONT_CENTER`. This controls the text alignment behavior for the
+      font. Defaults to `pygame.FONT_LEFT`.
+
+      Requires pygame built with SDL_ttf 2.20.0, as all official pygame
+      distributions are.
+
+      .. versionadded:: 2.1.4
+
+      .. ## Font.align ##
+
+   .. attribute:: point_size
+
+      | :sl:`Gets or sets the font's point size.`
+      | :sg:`point_size -> int`
+
+      Returns the point size of the font. Will not be accurate upon initializing
+      the font object when the font name is initialized as ``None``.
+
+      .. versionadded:: 2.3.1
+
+      .. ## Font.point_size ##
+
+
+   .. attribute:: outline
+
+      | :sl:`Gets or sets the font's outline thickness (pixels).`
+      | :sg:`outline -> int`
+
+      The outline value of the font.
+
+      When set to 0, the font will be drawn normally. When positive,
+      the text will be drawn as a hollow outline. The outline grows in all
+      directions a number of pixels equal to the value set. Negative values
+      are not allowed.
+
+      This can be drawn underneath unoutlined text to create a text outline
+      effect. For example: ::
+
+          def render_outlined(
+              font: pygame.Font,
+              text: str,
+              text_color: pygame.typing.ColorLike,
+              outline_color: pygame.typing.ColorLike,
+              outline_width: int,
+          ) -> pygame.Surface:
+              old_outline = font.outline
+              if old_outline != 0:
+                  font.outline = 0
+              base_text_surf = font.render(text, True, text_color)
+              font.outline = outline_width
+              outlined_text_surf = font.render(text, True, outline_color)
+
+              outlined_text_surf.blit(base_text_surf, (outline_width, outline_width))
+              font.outline = old_outline
+              return outlined_text_surf
+
+      .. versionadded:: 2.5.7
+
+      .. ## Font.outline ##
+
+   .. method:: render
+
+      | :sl:`Draw text on a new Surface.`
+      | :sg:`render(text, antialias, color, bgcolor=None, wraplength=0) -> Surface`
+
+      This creates a new Surface with the specified text rendered on it.
+      :mod:`pygame.font` provides no way to directly draw text on an existing
+      Surface: instead you must use :func:`Font.render` to create an image
+      (Surface) of the text, then blit this image onto another Surface.
+
+      Null characters ('\x00') raise a TypeError. Both Unicode and char (byte)
+      strings are accepted. For Unicode strings only UCS-2 characters
+      ('\\u0001' to '\\uFFFF') were previously supported and any greater
+      unicode codepoint would raise a UnicodeError. Now, characters in the
+      UCS-4 range are supported. For char strings a ``LATIN1`` encoding is
+      assumed. The antialias argument is a boolean: if True the characters
+      will have smooth edges. The color argument is the color of the text
+      [e.g.: (0,0,255) for blue]. The optional bgcolor argument is a color
+      to use for the text background. If bgcolor is ``None`` the area outside
+      the text will be transparent.
+
+      The `wraplength` argument describes the width (in pixels) a line of text
+      should be before wrapping to a new line. See
+      :attr:`pygame.font.Font.align` for line-alignment settings.
+
+      The Surface returned will be of the dimensions required to hold the text.
+      (the same as those returned by :func:`Font.size`). If an empty string is passed
+      for the text, a blank surface will be returned that is zero pixel wide and
+      the height of the font.
+
+      Depending on the type of background and antialiasing used, this returns
+      different types of Surfaces. For performance reasons, it is good to know
+      what type of image will be used. If antialiasing is not used, the return
+      image will always be an 8-bit image with a two-color palette. If the
+      background is transparent a colorkey will be set. Antialiased images are
+      rendered to 24-bit ``RGB`` images. If the background is transparent a
+      pixel alpha will be included.
+
+      Optimization: if you know that the final destination for the text (on the
+      screen) will always have a solid background, and the text is antialiased,
+      you can improve performance by specifying the background color. This will
+      cause the resulting image to maintain transparency information by
+      colorkey rather than (much less efficient) alpha values.
+
+      Font rendering is not thread safe: only a single thread can render text
+      at any time.
+
+      .. versionchangedold:: 2.0.3 Rendering UCS4 unicode works and does not
+        raise an exception. Use `if hasattr(pygame.font, "UCS4"):` to see if
+        pygame supports rendering UCS4 unicode including more languages and
+        emoji.
+
+      .. versionchanged:: 2.1.4 newline characters now will break text into
+         multiple lines.
+
+      .. versionadded:: 2.1.4 wraplength parameter
+
+      .. versionchanged:: 2.3.0 now supports keyword arguments.
+
+      .. ## Font.render ##
+
+   .. autopgmethod:: size
+
+   .. autopgmethod:: set_underline
+
+   .. autopgmethod:: get_underline
+
+   .. autopgmethod:: set_strikethrough
+
+   .. autopgmethod:: get_strikethrough
+
+   .. autopgmethod:: set_bold
+
+   .. autopgmethod:: get_bold
+
+   .. autopgmethod:: set_italic
+
+   .. autopgmethod:: metrics
+
+   .. autopgmethod:: get_italic
+
+   .. autopgmethod:: get_linesize
+
+   .. autopgmethod:: set_linesize
+
+   .. autopgmethod:: get_height
+
+   .. autopgmethod:: set_point_size
+
+   .. autopgmethod:: get_point_size
+
+   .. autopgmethod:: get_ascent
+
+   .. autopgmethod:: get_descent
+
+   .. autopgmethod:: set_script
+
+   .. autopgmethod:: set_direction
+
+   .. ## pygame.font.Font ##
+
+.. ## pygame.font ##

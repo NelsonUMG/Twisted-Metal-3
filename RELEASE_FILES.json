@@ -1,0 +1,10 @@
+{
+  "system256": {
+    "beetle_psx_system256.dll": "6e13944f5b0cf6e9022f028606a92505fec80fe8124b5282819f5ceb386c71b6",
+    "TM3_SYSTEM256.bin": "c86f5e4118a3555fd3347b8aa6eaf5cea1f2680326ccf7d17afa175a319dfcab",
+    "TM3_SYSTEM256.cue": "a7b7fdaef2366d41b74e3aa50c8faa8ba71da21e7e2db4c266cf9e1a72677639",
+    "beetle_psx_system256_vulkan.dll": "ecfba3237bb8c32344760ab4fb80e9c6309d60458ca16002dff2da57a01d62dd",
+    "tm3_vulkan_frontend.dll": "bdcc47087520bca54cd5bb406869c8641a7fbc4b7d4e49455a1ba6be01aaf0e4",
+    "libwinpthread-1.dll": "5e28db9c1ed427c6e4d58096d9324161ea160506769b5cf4049fe6152f42abaf"
+  }
+}

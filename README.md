@@ -23,12 +23,17 @@ distribuye instaladores. Un commit no actualiza las instalaciones por sí solo.
   Las recetas antiguas están retiradas en `legacy-source/distribution/`;
   el único punto de distribución nuevo es `tools/build_installer.py`.
 
-No se incluyen imágenes del juego, BIOS, ejecutables, credenciales, partidas,
-entornos Python ni compilaciones. Se conservan las licencias de cada componente.
+La carpeta completa de Windows ahora incluye `runtime/`, `.python/` y
+`assets/original/`, por solicitud del propietario. Los binarios grandes usan
+Git LFS. Para obtener todos los archivos hay que clonar con Git LFS y ejecutar
+`git lfs pull`; el ZIP de fuentes de GitHub puede contener sólo sus punteros.
+Credenciales, ajustes personales y partidas siguen excluidos. Se conservan las
+licencias de cada componente. Ver [carpeta independiente](docs/LOCAL_INDEPENDIENTE.md).
 
 ## Compilar y comprobar
 
-Windows x64, Python 3.14, compilador MinGW para los cores, Visual Studio C++
+Para ejecutar: Windows x64 y `ABRIR_TM3ONLINE.bat`, con el Python incluido.
+Para reconstruir componentes nativos: compilador MinGW para los cores, Visual Studio C++
 para el frontend local y el presentador Vulkan, e Inno Setup 6 para instalar.
 
 ```powershell

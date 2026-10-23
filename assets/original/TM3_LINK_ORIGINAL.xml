@@ -1,0 +1,151 @@
+<iso_project image_name="TM3_LINK_ORIGINAL.bin" cue_sheet="TM3_LINK_ORIGINAL.cue">
+    <track type="data" cdvd_style="false">
+        <identifiers system="PLAYSTATION" application="PSXIMAGER" volume="TM3_HACK" publisher="EDGBLA" data_preparer="EDGBLA" creation_date="1998101605473422+36" modification_date="2019061212540000+16" />
+        <license file="TM3_EXTRAIDO/license_data.dat" />
+        <default_attributes gmt_offs="0" xa_attrib="16" xa_perm="1365" xa_gid="0" xa_uid="0" hidden="1" />
+        <directory_tree source="TM3_EXTRAIDO" hidden="0">
+            <file name="SCUS_942.49" type="data" date="19981016004734" source="TM3_RECOMP_PADDED_TEST/input/SCUS_942.49.original" />
+            <file name="SYSTEM.CNF" type="data" date="19981016004734" />
+            <file name="MOVIE_R.MOD" type="data" date="19981016004734" />
+            <file name="TITLE.TIM" type="data" date="19981016004734" />
+            <file name="LEGAL.TIM" type="data" date="19981016004734" />
+            <file name="TM3.VAB" type="data" date="19981016004734" />
+            <file name="TM3LIGHT.VAB" type="data" date="19981016004734" />
+            <dir name="MENU" date="19981016004734">
+                <file name="MENU.DAT" type="data" date="19981016004734" />
+                <file name="CREDIT1.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT2.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT3.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT4.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT5.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT6.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT7.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT8.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT9.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT10.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT11.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT12.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT13.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT14.TIM" type="data" date="19981016004734" />
+                <file name="CREDIT15.TIM" type="data" date="19981016004734" />
+                <file name="IAUGER.TIM" type="data" date="19981016004734" />
+                <file name="IAXEL.TIM" type="data" date="19981016004734" />
+                <file name="ICLUBKID.TIM" type="data" date="19981016004734" />
+                <file name="IFIRE.TIM" type="data" date="19981016004734" />
+                <file name="IFPOWER.TIM" type="data" date="19981016004734" />
+                <file name="IGRIMM.TIM" type="data" date="19981016004734" />
+                <file name="IHAMMER.TIM" type="data" date="19981016004734" />
+                <file name="IMINION.TIM" type="data" date="19981016004734" />
+                <file name="IOUTLAW.TIM" type="data" date="19981016004734" />
+                <file name="IRDKILL.TIM" type="data" date="19981016004734" />
+                <file name="ISPECTRE.TIM" type="data" date="19981016004734" />
+                <file name="ISWEET.TIM" type="data" date="19981016004734" />
+                <file name="ITHUMPER.TIM" type="data" date="19981016004734" />
+                <file name="IWARTHOG.TIM" type="data" date="19981016004734" />
+                <file name="IFPOWER2.TIM" type="data" date="19981016004734" />
+            </dir>
+            <dir name="CARS" date="19981016004734">
+                <file name="AUGER.CAR" type="data" date="19981016004734" />
+                <file name="AXEL.CAR" type="data" date="19981016004734" />
+                <file name="CLUBKID.CAR" type="data" date="19981016004734" />
+                <file name="FIRE.CAR" type="data" date="19981016004734" />
+                <file name="FPOWER.CAR" type="data" date="19981016004734" />
+                <file name="GRIMM.CAR" type="data" date="19981016004734" />
+                <file name="HAMMER.CAR" type="data" date="19981016004734" />
+                <file name="MINION.CAR" type="data" date="19981016004734" />
+                <file name="OUTLAW.CAR" type="data" date="19981016004734" />
+                <file name="RDKILL.CAR" type="data" date="19981016004734" />
+                <file name="SPECTRE.CAR" type="data" date="19981016004734" />
+                <file name="SWEET.CAR" type="data" date="19981016004734" />
+                <file name="THUMPER.CAR" type="data" date="19981016004734" />
+                <file name="WARTHOG.CAR" type="data" date="19981016004734" />
+                <file name="DARKSIDE.CAR" type="data" date="19981016004734" />
+                <file name="PRIMEVAL.CAR" type="data" date="19981016004734" />
+            </dir>
+            <dir name="WORLDS" date="19981016004734">
+                <file name="HANGAR18.TER" type="data" date="19981016004734" />
+                <file name="HANGAR18.IMG" type="data" date="19981016004734" />
+                <file name="BLIMP.TER" type="data" date="19981016004734" />
+                <file name="BLIMP.IMG" type="data" date="19981016004734" />
+                <file name="EGYPT.TER" type="data" date="19981016004734" />
+                <file name="EGYPT.IMG" type="data" date="19981016004734" />
+                <file name="HOLLYWD.TER" type="data" date="19981016004734" />
+                <file name="HOLLYWD.IMG" type="data" date="19981016004734" />
+                <file name="LONDON.TER" type="data" date="19981016004734" />
+                <file name="LONDON.IMG" type="data" date="19981016004734" />
+                <file name="NPOLE.TER" type="data" date="19981016004734" />
+                <file name="NPOLE.IMG" type="data" date="19981016004734" />
+                <file name="TOKYO.TER" type="data" date="19981016004734" />
+                <file name="TOKYO.IMG" type="data" date="19981016004734" />
+                <file name="WASH.TER" type="data" date="19981016004734" />
+                <file name="WASH.IMG" type="data" date="19981016004734" />
+                <file name="MENU.IMG" type="data" date="19981016004734" />
+                <file name="MENU.TER" type="data" date="19981016004734" />
+                <file name="CKSHOUSE.TER" type="data" date="19981016004734" />
+                <file name="CKSHOUSE.IMG" type="data" date="19981016004734" />
+                <file name="WAREHOUS.TER" type="data" date="19981016004734" />
+                <file name="WAREHOUS.IMG" type="data" date="19981016004734" />
+            </dir>
+            <dir name="MOVIES" date="19981016004734">
+                <file name="989STUDI.STR" type="mixed" date="19981016004734" />
+                <file name="INTRO.STR" type="mixed" date="19981016004734" />
+                <file name="AUGER.STR" type="mixed" date="19981016004734" />
+                <file name="AXEL.STR" type="mixed" date="19981016004734" />
+                <file name="CLUBKID.STR" type="mixed" date="19981016004734" />
+                <file name="FIRE.STR" type="mixed" date="19981016004734" />
+                <file name="FPOWER.STR" type="mixed" date="19981016004734" />
+                <file name="GRIMM.STR" type="mixed" date="19981016004734" />
+                <file name="HAMMER.STR" type="mixed" date="19981016004734" />
+                <file name="MINION.STR" type="mixed" date="19981016004734" />
+                <file name="OUTLAW.STR" type="mixed" date="19981016004734" />
+                <file name="RDKILL.STR" type="mixed" date="19981016004734" />
+                <file name="SPECTRE.STR" type="mixed" date="19981016004734" />
+                <file name="SWEET.STR" type="mixed" date="19981016004734" />
+                <file name="THUMPER.STR" type="mixed" date="19981016004734" />
+                <file name="WARTHOG.STR" type="mixed" date="19981016004734" />
+            </dir>
+        </directory_tree>
+    </track>
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-02.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-03.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-04.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-05.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-06.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-07.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-08.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-09.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-10.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-11.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-12.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-13.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-14.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-15.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-16.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-17.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-18.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-19.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-20.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-21.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-22.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-23.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-24.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-25.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-26.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-27.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-28.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-29.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-30.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-31.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-32.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-33.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-34.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-35.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-36.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-37.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-38.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-39.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-40.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-41.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-42.WAV" />
+    <track type="audio" source="TM3_EXTRAIDO/TRACK-43.WAV" />
+</iso_project>

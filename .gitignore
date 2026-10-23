@@ -19,6 +19,12 @@ __pycache__/
 *.log
 .env*
 .venv*/
+.python/
+assets/
+licenses/
+RELEASE_FILES.json
+TM3Lobby.json
+LOCAL_RUNTIME.json
 node_modules/
 .wrangler/
 build/
@@ -28,4 +34,21 @@ runtime/
 !**/runtime/*.md
 **/reports/*
 !256mb system/reports/reference.json
+
+# Complete Windows runtime explicitly requested by the repository owner.
+!/.python/
+!/.python/**
+/.python/**/__pycache__/
+/.python/**/*.pyc
+!/runtime/
+!/runtime/**
+/runtime/saves*/
+/runtime/TM3Console.ini
+!/assets/
+!/assets/**
+!/licenses/
+!/licenses/**
+!/RELEASE_FILES.json
+!/TM3Lobby.json
+/userdata/
 

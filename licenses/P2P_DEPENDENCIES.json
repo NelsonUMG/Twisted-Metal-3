@@ -1,0 +1,139 @@
+[
+  {
+    "package": "aiortc",
+    "version": "1.15.0",
+    "license": "BSD-3-Clause",
+    "project_urls": [
+      "homepage, https://github.com/aiortc/aiortc",
+      "changelog, https://aiortc.readthedocs.io/en/stable/changelog.html",
+      "documentation, https://aiortc.readthedocs.io/"
+    ]
+  },
+  {
+    "package": "aioice",
+    "version": "0.10.2",
+    "license": "BSD-3-Clause",
+    "project_urls": [
+      "Homepage, https://github.com/aiortc/aioice",
+      "Changelog, https://aioice.readthedocs.io/en/stable/changelog.html",
+      "Documentation, https://aioice.readthedocs.io/"
+    ]
+  },
+  {
+    "package": "av",
+    "version": "17.1.0",
+    "license": "BSD-3-Clause",
+    "project_urls": [
+      "Bug Tracker, https://github.com/PyAV-Org/PyAV/issues",
+      "Source Code, https://github.com/PyAV-Org/PyAV",
+      "homepage, https://pyav.basswood-io.com"
+    ]
+  },
+  {
+    "package": "cryptography",
+    "version": "50.0.2",
+    "license": "Apache-2.0 OR BSD-3-Clause",
+    "project_urls": [
+      "changelog, https://cryptography.io/en/latest/changelog/",
+      "documentation, https://cryptography.io/",
+      "homepage, https://github.com/pyca/cryptography",
+      "issues, https://github.com/pyca/cryptography/issues",
+      "source, https://github.com/pyca/cryptography/"
+    ]
+  },
+  {
+    "package": "google-crc32c",
+    "version": "1.9.0",
+    "license": "Apache-2.0",
+    "project_urls": []
+  },
+  {
+    "package": "pyee",
+    "version": "15.0.0",
+    "license": "MIT",
+    "project_urls": [
+      "Repository, https://github.com/jfhbrook/pyee",
+      "Documentation, https://pyee.readthedocs.io"
+    ]
+  },
+  {
+    "package": "pylibsrtp",
+    "version": "1.0.0",
+    "license": "BSD-3-Clause",
+    "project_urls": [
+      "homepage, https://github.com/aiortc/pylibsrtp",
+      "documentation, https://pylibsrtp.readthedocs.io/"
+    ]
+  },
+  {
+    "package": "pyOpenSSL",
+    "version": "26.4.0",
+    "license": "Apache License, Version 2.0",
+    "project_urls": [
+      "Source, https://github.com/pyca/pyopenssl"
+    ]
+  },
+  {
+    "package": "dnspython",
+    "version": "2.9.0",
+    "license": "ISC",
+    "project_urls": [
+      "homepage, https://www.dnspython.org",
+      "repository, https://github.com/rthalley/dnspython.git",
+      "documentation, https://dnspython.readthedocs.io/en/stable/",
+      "issues, https://github.com/rthalley/dnspython/issues"
+    ]
+  },
+  {
+    "package": "ifaddr",
+    "version": "0.2.0",
+    "license": "MIT",
+    "project_urls": []
+  },
+  {
+    "package": "cffi",
+    "version": "2.1.1",
+    "license": "MIT-0",
+    "project_urls": [
+      "Documentation, https://cffi.readthedocs.io/",
+      "Changelog, https://cffi.readthedocs.io/en/latest/whatsnew.html",
+      "Download, https://github.com/python-cffi/cffi/releases",
+      "Contact, https://groups.google.com/forum/#!forum/python-cffi",
+      "Source Code, https://github.com/python-cffi/cffi",
+      "Issue Tracker, https://github.com/python-cffi/cffi/issues"
+    ]
+  },
+  {
+    "package": "pycparser",
+    "version": "3.12",
+    "license": "BSD-3-Clause",
+    "project_urls": [
+      "Homepage, https://github.com/eliben/pycparser"
+    ]
+  },
+  {
+    "package": "typing_extensions",
+    "version": "4.16.0",
+    "license": "PSF-2.0",
+    "project_urls": [
+      "Bug Tracker, https://github.com/python/typing_extensions/issues",
+      "Changes, https://github.com/python/typing_extensions/blob/main/CHANGELOG.md",
+      "Documentation, https://typing-extensions.readthedocs.io/",
+      "Home, https://github.com/python/typing_extensions",
+      "Q & A, https://github.com/python/typing/discussions",
+      "Repository, https://github.com/python/typing_extensions"
+    ]
+  },
+  {
+    "package": "websockets",
+    "version": "17.2",
+    "license": "BSD-3-Clause",
+    "project_urls": [
+      "Homepage, https://github.com/python-websockets/websockets",
+      "Changelog, https://websockets.readthedocs.io/en/stable/project/changelog.html",
+      "Documentation, https://websockets.readthedocs.io/",
+      "Funding, https://tidelift.com/subscription/pkg/pypi-websockets?utm_source=pypi-websockets&utm_medium=referral&utm_campaign=readme",
+      "Tracker, https://github.com/python-websockets/websockets/issues"
+    ]
+  }
+]

@@ -1,0 +1,7 @@
+.
+Lib
+DLLs
+Lib/site-packages
+../
+../network
+../256mb system/src
