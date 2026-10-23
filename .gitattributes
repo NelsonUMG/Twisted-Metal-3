@@ -11,3 +11,6 @@
 *.exe filter=lfs diff=lfs merge=lfs -text
 *.pyd filter=lfs diff=lfs merge=lfs -text
 *.lib filter=lfs diff=lfs merge=lfs -text
+/.python/** -text
+/runtime/** -text
+/assets/** -text

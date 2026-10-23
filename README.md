@@ -62,8 +62,9 @@ Los archivos del juego pertenecen al usuario y no viajan en Releases.
 ## Publicación y actualización
 
 1. Cambiar `VERSION`, ejecutar QA y guardar los cambios en Git.
-2. El runner Windows privado etiquetado `tm3-release` debe tener Python, Inno,
-   `gh`, `TM3_RELEASE_RUNTIME` y `TM3_ISCC` configurados.
+2. El runner Windows privado etiquetado `tm3-release` debe tener Git LFS, Inno,
+   `gh` y `TM3_ISCC` configurados. El workflow descarga LFS y usa el Python y
+   `runtime/` del repositorio, sin rutas a la instalación anterior.
 3. Subir un tag `vX.Y.Z` que coincida con VERSION. El workflow crea la Release
    con `TM3Online-Setup.exe`; GitHub proporciona el SHA256 del asset.
 4. El lobby consulta Releases al abrir y mediante «Buscar actualizaciones».
