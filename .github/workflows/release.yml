@@ -1,4 +1,4 @@
-name: Publish Windows installer
+name: Publish Windows file updates
 on:
   push:
     tags: ['v*']
@@ -6,9 +6,7 @@ permissions:
   contents: write
 jobs:
   release:
-    # This runner uses the owner's tested runtime locally. Never put game data
-    # or private credentials on a shared public runner.
-    runs-on: [self-hosted, Windows, X64, tm3-release]
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,11 +20,14 @@ jobs:
         env:
           PYTHONPATH: network
         run: ./.python/python.exe -m unittest discover -s network -p 'test_*.py'
-      - name: Build installer from tested runtime
+      - name: Build verified file-update assets
         shell: pwsh
-        run: ./.python/python.exe tools/build_installer.py --runtime runtime --iscc "$env:TM3_ISCC"
+        run: ./.python/python.exe tools/build_installer.py --runtime runtime --stage-only
       - name: Publish
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create $env:GITHUB_REF_NAME dist/TM3Online-Setup.exe dist/SHA256SUMS.txt dist/update/* --verify-tag --generate-notes
+        run: |
+          $releaseAssets = @(Get-ChildItem -LiteralPath dist/update -File | Select-Object -ExpandProperty FullName)
+          gh release create $env:GITHUB_REF_NAME @releaseAssets --verify-tag --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

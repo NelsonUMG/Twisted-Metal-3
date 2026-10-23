@@ -61,19 +61,22 @@ Los archivos del juego pertenecen al usuario y no viajan en Releases.
 
 ## Publicación y actualización
 
-1. Cambiar `VERSION`, ejecutar QA y guardar los cambios en Git.
-2. El runner Windows privado etiquetado `tm3-release` debe tener Git LFS, Inno,
-   `gh` y `TM3_ISCC` configurados. El workflow descarga LFS y usa el Python y
-   `runtime/` del repositorio, sin rutas a la instalación anterior.
-3. Subir un tag `vX.Y.Z` que coincida con VERSION. El workflow crea la Release
-   con `TM3Online-Setup.exe`; GitHub proporciona el SHA256 del asset.
-4. El lobby consulta Releases al abrir y mediante «Buscar actualizaciones».
-   Solicita instalar sólo si hay una versión mayor; verifica tamaño y SHA256
-   antes de ejecutar el instalador en la carpeta actual.
+La Release [v0.2.1](https://github.com/NelsonUMG/Twisted-Metal-3/releases/tag/v0.2.1)
+publica un manifiesto y archivos individuales verificados con SHA256. Requiere
+una instalación existente con el nuevo actualizador; no incluye instalador inicial.
 
-No hay tokens de GitHub en clientes. Un repositorio privado requiere un canal
-de descargas público separado o autenticación adicional; el actualizador usa
-la API pública. No publicar versiones antes de validar el instalador completo.
+El lobby consulta una sola vez al abrir. Si hay una versión mayor, compara
+los archivos instalados con el manifiesto, descarga sólo los diferentes y
+muestra el progreso y sus nombres. «Reiniciar» cierra los procesos propios,
+aplica los cambios con recuperación temporal y vuelve a abrir el lobby.
+Se conservan ajustes personales y partidas. GitHub registra diferencias de código;
+el cliente reemplaza archivos completos modificados, incluidos PY, DLL y EXE.
+
+Para próximas publicaciones: actualizar VERSION, ejecutar QA, confirmar los cambios
+y subir un tag vX.Y.Z coincidente. El workflow usa windows-latest y compila los
+assets mediante tools/build_installer.py --runtime runtime --stage-only.
+El Setup inicial continúa siendo un trabajo separado que requiere Inno Setup.
+No hay tokens de GitHub en los clientes. Ver docs/FILE_UPDATE_QA.md.
 
 ## QA online
 
