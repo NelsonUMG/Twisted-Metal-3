@@ -21,12 +21,25 @@ Estos pendientes impiden llamar a esta migración una distribución final valida
 Los ZIP y respaldos se eliminan sólo después de comprobar que sus fuentes únicas
 están importadas y de confirmar que el commit está también en origin.
 
-La importación completa quedó confirmada en origin/main (commit inicial 05704d5).
-La revisión automática rechazó eliminar los archivos ZIP/RAR de la raíz: siguen
-en disco. También rechazó instalar Inno Setup. No se usó otra vía para ejecutar
-ninguna de esas dos acciones. La instalación jugable anterior no se sustituyó.
+La importación de fuentes quedó confirmada en origin/main (commit inicial 05704d5).
+En esa primera fase la revisión automática rechazó eliminar ZIP/RAR e instalar
+Inno Setup. Posteriormente el usuario amplió expresamente la consolidación:
+se copiaron juego, DLL y Python al repositorio, se probaron y se subieron mediante
+Git LFS (1f2d8ae y 22a5420). La limpieza posterior autorizada eliminó 57 elementos
+externos, incluidos los ZIP y la instalación antigua. Sólo queda el repositorio
+con su carpeta contenedora. El compilador Inno Setup sigue pendiente.
 
 Resultados medidos en docs/ONLINE_QA_20261023.json. Se detectó y corrigió la
 escritura simultánea de status entre los hilos de rol y UI. La entrada frozen
 captura los fallos del motor y preserva su informe para que una desconexión
 esperada no abra el diálogo genérico de excepción de PyInstaller.
+
+La ejecución posterior a la limpieza usa exclusivamente `.python/python.exe`
+y `runtime/` internos. Lobby, Cloudflare, RTT y P2P se comprobaron de nuevo;
+ambas consolas completaron 600 ticks sin diferencias TIME/RNG. La prueba nativa
+local sólo verifica arranque y cierre normal. Durante la repetición de unittest
+se detectó Tcl_AsyncDelete: el arnés retenía ciclos de widgets destruidos que
+podían recogerse desde hilos de P2P. Su tearDown ahora cancela timers, elimina
+referencias y recoge esos ciclos en el hilo propietario. La suite completa
+terminó posteriormente con 120 pruebas y código de salida 0.
+Ver docs/STANDALONE_QA_20261023.json y docs/LOCAL_INDEPENDIENTE.md.

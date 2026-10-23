@@ -1,5 +1,6 @@
 """Client startup and layout regressions. No game launches or real profile writes."""
 import queue
+import gc
 import socket
 import unittest
 import tempfile
@@ -54,7 +55,16 @@ class LayoutTest(unittest.TestCase):
 
     def tearDown(self):
         self.show_patch.stop()
+        for timer in self.root.tk.call('after', 'info'):
+            self.root.after_cancel(timer)
         self.root.destroy()
+        self.app = None
+        self.root = None
+        self.show_patch = None
+        # These tests create a fresh Tcl interpreter for each case. Release
+        # widget/mock cycles on its owning thread before later P2P tests start
+        # asyncio threads which can otherwise trigger cyclic GC themselves.
+        gc.collect()
 
     def room(self, owner=True, players=None):
         return dict(id="qa-room", host="Nelson", players=players or ["Nelson"], owner=owner,

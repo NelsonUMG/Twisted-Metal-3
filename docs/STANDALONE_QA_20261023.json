@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-23",
+  "standalone_python": true,
+  "python_paths_within_repository": true,
+  "python_base_within_repository": true,
+  "unit_tests": 120,
+  "unit_exit_code": 0,
+  "lobby_ok": true,
+  "cloudflare_signaling_ok": true,
+  "local_native_startup_and_close_ok": true,
+  "local_native_full_gameplay_tested": false,
+  "online_p2p_passed": true,
+  "gameplay_ticks": [
+    600,
+    600
+  ],
+  "time_mismatches": [
+    0,
+    0
+  ],
+  "rng_mismatches": [
+    0,
+    0
+  ],
+  "rates": [
+    29.967382396939,
+    29.897893971366436
+  ],
+  "audio_started": [
+    true,
+    true
+  ],
+  "rtt": {
+    "method": "encrypted_control_echo",
+    "sample_window": 30,
+    "probe_interval_seconds": 2,
+    "samples": 30,
+    "rtt_ms": 2.7105,
+    "average_ms": 1.95751,
+    "minimum_ms": 0.9196,
+    "maximum_ms": 3.3866,
+    "variation_ms": 0.5841931034482759,
+    "age_seconds": 1.6038502,
+    "connected": true,
+    "stale": false
+  },
+  "selected_route": {
+    "local_type": "host",
+    "remote_type": "host",
+    "ip_version": 4
+  },
+  "external_wan": false,
+  "cleanup_executed": true,
+  "removed_old_targets": 57,
+  "source_and_lfs_uploaded": true,
+  "preserved_private_data_excluded_from_git": true,
+  "notes": [
+    "Native startup test is not full local gameplay QA.",
+    "Dummy audio and offscreen video do not certify physical sound/display.",
+    "Tcl widget-cycle cleanup fixed in unit-test tearDown.",
+    "Inno Setup installer and real release upgrade still require validation."
+  ]
+}
