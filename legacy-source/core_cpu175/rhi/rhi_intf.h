@@ -1,0 +1,177 @@
+#ifndef __RHI_INTF_H__
+#define __RHI_INTF_H__
+
+#include "libretro.h"
+
+#define SOUND_FREQUENCY 44100
+
+/* NTSC content on NTSC clock, PAL content on PAL clock. */
+#define FPS_NTSC_INTERLACED    59.940
+#define FPS_NTSC_NONINTERLACED 59.826
+#define FPS_PAL_INTERLACED     50.000
+#define FPS_PAL_NONINTERLACED  49.761
+
+enum rhi_renderer_type
+{
+   RHI_SOFTWARE = 0,
+   RHI_OPENGL,
+   RHI_VULKAN
+};
+
+enum force_renderer_type
+{
+   AUTO = 0,
+   FORCE_OPENGL,
+   FORCE_VULKAN
+};
+
+enum blending_modes
+{
+   BLEND_MODE_OPAQUE     = -1,
+   BLEND_MODE_AVERAGE    =  0,
+   BLEND_MODE_ADD        =  1,
+   BLEND_MODE_SUBTRACT   =  2,
+   BLEND_MODE_ADD_FOURTH =  3
+};
+
+enum width_modes
+{
+   WIDTH_MODE_256 = 0,
+   WIDTH_MODE_320,
+   WIDTH_MODE_512,
+   WIDTH_MODE_640,
+   WIDTH_MODE_368
+};
+
+enum height_modes
+{
+   HEIGHT_MODE_240 = 0,
+   HEIGHT_MODE_480
+};
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void rhi_intf_set_environment(retro_environment_t cb);
+void rhi_intf_set_video_refresh(retro_video_refresh_t cb);
+void rhi_intf_get_system_av_info(struct retro_system_av_info *info);
+
+bool rhi_intf_open(bool is_pal, bool force_software);
+void rhi_intf_close(void);
+void rhi_intf_refresh_variables(void);
+void rhi_intf_prepare_frame(void);
+void rhi_intf_apply_pending_geometry(void);
+void rhi_intf_finalize_frame(const void *fb, unsigned width,
+                             unsigned height, unsigned pitch);
+
+void rhi_intf_set_tex_window(uint8_t tww, uint8_t twh,
+                             uint8_t twx, uint8_t twy);
+
+void rhi_intf_set_mask_setting(uint32_t mask_set_or, uint32_t mask_eval_and);
+void rhi_intf_set_draw_offset(int16_t x, int16_t y);
+void rhi_intf_set_draw_area(uint16_t x0, uint16_t y0,
+                            uint16_t x1, uint16_t y1);
+void rhi_intf_set_vram_framebuffer_coords(uint32_t xstart, uint32_t ystart);
+void rhi_intf_set_horizontal_display_range(uint16_t x1, uint16_t x2);
+void rhi_intf_set_vertical_display_range(uint16_t y1, uint16_t y2);
+void rhi_intf_set_display_mode(bool depth_24bpp,
+                               bool is_pal,
+                               bool is_480i,
+                               int width_mode); //enum
+
+void rhi_intf_push_triangle(float p0x, float p0y, float p0w,
+                            float p1x, float p1y, float p1w,
+                            float p2x, float p2y, float p2w,
+                            uint32_t c0, uint32_t c1, uint32_t c2,
+                            uint16_t t0x, uint16_t t0y,
+                            uint16_t t1x, uint16_t t1y,
+                            uint16_t t2x, uint16_t t2y,
+                            uint16_t min_u, uint16_t min_v,
+                            uint16_t max_u, uint16_t max_v,
+                            uint16_t texpage_x, uint16_t texpage_y,
+                            uint16_t clut_x, uint16_t clut_y,
+                            uint8_t texture_blend_mode,
+                            uint8_t depth_shift,
+                            bool dither,
+                            /* This is really an `enum blending_modes`
+                             * but I don't want to deal with enums in the
+                             * FFI */
+                            int blend_mode,
+                            bool mask_test,
+                            bool set_mask);
+
+void rhi_intf_push_quad(float p0x, float p0y, float p0w,
+                        float p1x, float p1y, float p1w,
+                        float p2x, float p2y, float p2w,
+                        float p3x, float p3y, float p3w,
+                        uint32_t c0,
+                        uint32_t c1,
+                        uint32_t c2,
+                        uint32_t c3,
+                        uint16_t t0x, uint16_t t0y,
+                        uint16_t t1x, uint16_t t1y,
+                        uint16_t t2x, uint16_t t2y,
+                        uint16_t t3x, uint16_t t3y,
+                        uint16_t min_u, uint16_t min_v,
+                        uint16_t max_u, uint16_t max_v,
+                        uint16_t texpage_x, uint16_t texpage_y,
+                        uint16_t clut_x, uint16_t clut_y,
+                        uint8_t texture_blend_mode,
+                        uint8_t depth_shift,
+                        bool dither,
+                        int blend_mode,
+                        bool mask_test,
+                        bool set_mask,
+                        bool is_sprite,
+                        bool may_be_2d);
+
+void rhi_intf_push_line(int16_t p0x, int16_t p0y,
+                        int16_t p1x, int16_t p1y,
+                        uint32_t c0,
+                        uint32_t c1,
+                        bool dither,
+                        /* This is really an `enum blending_modes`
+                         * but I don't want to deal with enums in the FFI */
+                        int blend_mode,
+                        bool mask_test,
+                        bool set_mask);
+
+void rhi_intf_load_image(uint16_t x, uint16_t y,
+                         uint16_t w, uint16_t h,
+                         uint16_t *vram,
+                         bool mask_test,
+                         bool set_mask);
+
+bool rhi_intf_read_vram(uint16_t x, uint16_t y,
+                        uint16_t w, uint16_t h,
+                        uint16_t *vram);
+
+void rhi_intf_fill_rect(uint32_t color,
+                        uint16_t x, uint16_t y,
+                        uint16_t w, uint16_t h);
+
+void rhi_intf_copy_rect(uint16_t src_x, uint16_t src_y,
+                        uint16_t dst_x, uint16_t dst_y,
+                        uint16_t w, uint16_t h, 
+                        bool mask_test, bool set_mask);
+
+enum rhi_renderer_type rhi_intf_is_type(void);
+
+void rhi_intf_toggle_display(bool status);
+
+bool rhi_intf_has_software_renderer(void);
+bool rhi_intf_context_ready(void);
+
+double rhi_common_get_timing_fps(void);
+
+float rhi_common_get_aspect_ratio(bool pal_content, int crop_overscan,
+                                  int first_visible_scanline, int last_visible_scanline,
+                                  int aspect_ratio_setting, bool vram_override, bool widescreen_override,
+                                  int widescreen_hack_aspect_ratio_setting);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /*__RHI_H__*/

@@ -1,0 +1,15 @@
+# Pinned Windows build used for ice_p2p_v1 (Python 3.14 x64).
+aiortc==1.15.0
+aioice==0.10.2
+av==17.1.0
+cryptography==50.0.2
+google-crc32c==1.9.0
+pyee==15.0.0
+pylibsrtp==1.0.0
+pyOpenSSL==26.4.0
+dnspython==2.9.0
+ifaddr==0.2.0
+cffi==2.1.1
+pycparser==3.12
+typing_extensions==4.16.0
+websockets==17.2

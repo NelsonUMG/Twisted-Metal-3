@@ -1,0 +1,8 @@
+{$TM3_DOMAIN} {
+    handle /tm3-relay {
+        reverse_proxy relay:27900
+    }
+    handle {
+        reverse_proxy lobby:27890
+    }
+}

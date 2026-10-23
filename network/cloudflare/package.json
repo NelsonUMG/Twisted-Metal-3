@@ -1,0 +1,14 @@
+{
+  "name": "tm3-room-directory",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --ip 127.0.0.1 --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.152.0",
+    "miniflare": "4.20260730.0"
+  }
+}

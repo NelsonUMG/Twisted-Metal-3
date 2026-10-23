@@ -1,0 +1,18 @@
+{
+  "runtime": {
+    "variant": "SqrtMergeV4 + LinkWakeV1 + CPU175 SemiProduccion",
+    "diagnostics": false,
+    "executable": "runtime/TM3Online.exe",
+    "core": "runtime/cores/beetle_psx_libretro.dll",
+    "game": "runtime/game/TM3_SQRT_MERGE_V4.cue",
+    "environment": {
+      "TM3O_LINK_HIRES_WAIT": "1",
+      "TM3O_LINK_UDP_WAKE": "1",
+      "TM3O_LINK_BOUNDARY": "0",
+      "TM3O_CPU_BUDGET_PERCENT": "175",
+      "TM3O_CPU_SCHEDULING": "1",
+      "TM3O_DIAGNOSTICS": "0"
+    },
+    "log_files": {}
+  }
+}

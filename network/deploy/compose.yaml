@@ -1,0 +1,44 @@
+name: tm3online
+services:
+  gateway:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      TM3_DOMAIN: ${TM3_DOMAIN:?Define TM3_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [public, backend]
+    depends_on: [lobby, relay]
+  lobby:
+    build:
+      context: ..
+      dockerfile: Dockerfile.lobby
+    restart: unless-stopped
+    environment:
+      TM3_RELAY_SECRET: ${TM3_RELAY_SECRET:?Generate a random shared secret in .env}
+      TM3_RELAY_URL: https://${TM3_DOMAIN}/tm3-relay
+    volumes:
+      - lobby_data:/data
+    networks: [backend]
+  relay:
+    build:
+      context: ..
+      dockerfile: Dockerfile.lobby
+    command: ["python", "relay_server.py", "--bind", "0.0.0.0", "--port", "27900", "--behind-proxy"]
+    restart: unless-stopped
+    environment:
+      TM3_RELAY_SECRET: ${TM3_RELAY_SECRET}
+    networks: [backend]
+networks:
+  public: {}
+  backend:
+    internal: true
+volumes:
+  lobby_data: {}
+  caddy_data: {}
+  caddy_config: {}

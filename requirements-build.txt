@@ -1,0 +1,3 @@
+-r network/requirements-p2p.txt
+pygame-ce==2.5.8
+pyinstaller==6.22.3

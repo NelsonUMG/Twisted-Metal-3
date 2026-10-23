@@ -1,0 +1,393 @@
+SOURCES_CXX :=
+SOURCES_C   :=
+
+DEPS_DIR     := $(CORE_DIR)/deps
+LIBRETRO_COMM_DIR := $(CORE_DIR)/libretro-common
+MEDNAFEN_DIR := $(CORE_DIR)/mednafen
+CORE_EMU_DIR := $(MEDNAFEN_DIR)/psx
+CDROM_DIR    := $(MEDNAFEN_DIR)/cdrom
+ZLIB_DIR     := $(DEPS_DIR)/zlib-1.2.11
+
+LIBCHDR_INCFLAGS = \
+                     -I$(DEPS_DIR)/libchdr/include
+
+LIBCHDR_SOURCES_C = \
+                     $(DEPS_DIR)/libchdr/deps/lzma-25.01/src/LzmaDec.c \
+                     $(DEPS_DIR)/libchdr/deps/zstd-1.5.7/zstddeclib.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_bitstream.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_cdrom.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_chd.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_cdfl.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_cdlz.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_cdzl.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_cdzs.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_flac.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_huff.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_lzma.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_zlib.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_codec_zstd.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_flac.c \
+                     $(DEPS_DIR)/libchdr/src/libchdr_huffman.c
+
+ZLIB_INCFLAGS = -I$(ZLIB_DIR)
+ZLIB_SOURCES_C = \
+		 $(ZLIB_DIR)/adler32.c \
+		 $(ZLIB_DIR)/crc32.c \
+		 $(ZLIB_DIR)/deflate.c \
+		 $(ZLIB_DIR)/inffast.c \
+		 $(ZLIB_DIR)/inflate.c \
+		 $(ZLIB_DIR)/inftrees.c \
+		 $(ZLIB_DIR)/trees.c \
+		 $(ZLIB_DIR)/zutil.c
+
+# Image decoders for the shared RHI HD-texture replacement system (rhi/rhi_tt.c).
+# Replacement packs may use PNG, JPEG, BMP, TGA, WEBP or DDS; dumps are written
+# as PNG through rpng_encode (which is why deflate.c/trees.c joined the bundled
+# zlib above - it was inflate-only before). Decoding goes through the
+# image_texture / image_transfer front end; rjpeg's runtime SIMD kernel
+# selection needs features_cpu, rwebp's lossy path needs the rvp8 decoder, and
+# image_texture's file path needs nbio.
+IMAGE_FORMAT_SOURCES_C = \
+		 $(LIBRETRO_COMM_DIR)/formats/image_texture.c \
+		 $(LIBRETRO_COMM_DIR)/formats/image_transfer.c \
+		 $(LIBRETRO_COMM_DIR)/formats/png/rpng.c \
+		 $(LIBRETRO_COMM_DIR)/formats/png/rpng_encode.c \
+		 $(LIBRETRO_COMM_DIR)/formats/jpeg/rjpeg.c \
+		 $(LIBRETRO_COMM_DIR)/formats/bmp/rbmp.c \
+		 $(LIBRETRO_COMM_DIR)/formats/tga/rtga.c \
+		 $(LIBRETRO_COMM_DIR)/formats/webp/rwebp.c \
+		 $(LIBRETRO_COMM_DIR)/formats/vp8/rvp8.c \
+		 $(LIBRETRO_COMM_DIR)/formats/dds/rdds.c \
+		 $(LIBRETRO_COMM_DIR)/streams/trans_stream.c \
+		 $(LIBRETRO_COMM_DIR)/streams/trans_stream_pipe.c \
+		 $(LIBRETRO_COMM_DIR)/streams/trans_stream_zlib.c \
+		 $(LIBRETRO_COMM_DIR)/streams/interface_stream.c \
+		 $(LIBRETRO_COMM_DIR)/streams/memory_stream.c \
+		 $(LIBRETRO_COMM_DIR)/streams/rzip_stream.c \
+		 $(LIBRETRO_COMM_DIR)/streams/chd_stream.c \
+		 $(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c \
+		 $(LIBRETRO_COMM_DIR)/file/nbio/nbio_intf.c \
+		 $(LIBRETRO_COMM_DIR)/file/nbio/nbio_stdio.c \
+		 $(LIBRETRO_COMM_DIR)/file/nbio/nbio_windowsmmap.c \
+		 $(LIBRETRO_COMM_DIR)/file/nbio/nbio_unixmmap.c \
+		 $(LIBRETRO_COMM_DIR)/features/features_cpu.c
+
+IMAGE_FORMAT_FLAGS = -DHAVE_RPNG -DHAVE_RJPEG -DHAVE_RBMP -DHAVE_RTGA \
+		 -DHAVE_RWEBP -DHAVE_RDDS -DHAVE_ZLIB=1
+
+ifeq ($(HAVE_OPENGL), 1)
+   ifeq ($(GLES3), 1)
+      GLFLAGS  := -DHAVE_OPENGLES -DHAVE_OPENGLES3
+      CFLAGS   += $(GLFLAGS)
+      CXXFLAGS += $(GLFLAGS)
+      SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es3.c
+   else ifeq ($(GLES), 1)
+      GLFLAGS  := -DHAVE_OPENGLES -DHAVE_OPENGLES2
+      CFLAGS   += $(GLFLAGS)
+      CXXFLAGS += $(GLFLAGS)
+      SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
+   else
+      GLFLAGS   := -DHAVE_OPENGL -DCORE
+      CFLAGS    += $(GLFLAGS)
+      CXXFLAGS  += $(GLFLAGS)
+      SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
+   endif
+
+   SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
+
+   SOURCES_C += $(CORE_DIR)/rhi/rhi_lib_gl.c
+endif
+
+INCFLAGS := -I$(CORE_DIR) \
+            -I$(MEDNAFEN_DIR) \
+            -I$(MEDNAFEN_DIR)/include \
+            -I$(LIBRETRO_COMM_DIR)/include
+
+ifneq (,$(findstring msvc,$(platform)))
+   INCFLAGS += -I$(CORE_DIR)/msvc
+endif
+
+ifeq ($(SYSTEM_ZLIB), 1)
+   CFLAGS += $(shell pkg-config --cflags zlib)
+   LIBS += $(shell pkg-config --libs zlib)
+else
+   INCFLAGS += $(ZLIB_INCFLAGS)
+   SOURCES_C += $(ZLIB_SOURCES_C)
+endif
+
+FLAGS += -DHAVE_PBP
+
+ifeq ($(NEED_THREADING), 1)
+   FLAGS += -DWANT_THREADING -DHAVE_THREADS
+endif
+
+ifeq ($(NEED_CRC32), 1)
+   FLAGS += -DWANT_CRC32
+   SOURCES_C += $(CORE_DIR)/scrc32.c
+endif
+
+ifeq ($(NEED_DEINTERLACER), 1)
+   FLAGS += -DNEED_DEINTERLACER
+endif
+
+ifeq ($(IS_X86), 1)
+   FLAGS += -DARCH_X86
+endif
+
+ifeq ($(NEED_BPP), 8)
+   FLAGS += -DWANT_8BPP
+endif
+
+ifeq ($(NEED_BPP), 16)
+   FLAGS += -DWANT_16BPP
+endif
+
+ifeq ($(NEED_BPP), 32)
+   FLAGS += -DWANT_32BPP
+endif
+
+ifeq ($(NO_COMPUTED_GOTO), 1)
+   FLAGS += -DNO_COMPUTED_GOTO
+endif
+
+ifeq ($(NEED_CD), 1)
+   FLAGS += -DNEED_CD
+endif
+
+ifeq ($(HAVE_CHD), 1)
+   FLAGS += -DHAVE_CHD
+
+   ifeq ($(SYSTEM_LIBCHDR), 1)
+      INCFLAGS += $(shell pkg-config --cflags libchdr)
+      LIBS += $(shell pkg-config --libs libchdr)
+   else
+      INCFLAGS += $(LIBCHDR_INCFLAGS)
+   endif
+endif
+
+ifeq ($(NEED_TREMOR), 1)
+   FLAGS += -DNEED_TREMOR
+endif
+
+ifeq ($(HAVE_LIGHTREC), 1)
+   FLAGS += -DHAVE_LIGHTREC
+
+   ifeq ($(LIGHTREC_LOG_LEVEL),)
+       FLAGS += -DLOG_LEVEL=3 \
+                -DENABLE_DISASSEMBLER=0
+   else
+       ifeq ($(LIGHTREC_LOG_LEVEL), 4)
+           FLAGS += -DLOG_LEVEL=4 \
+                    -DENABLE_DISASSEMBLER=1
+       else
+           FLAGS += -DLOG_LEVEL=$(LIGHTREC_LOG_LEVEL) \
+                    -DENABLE_DISASSEMBLER=0
+       endif
+   endif
+
+   ifeq ($(NO_GCC), 1)
+       FLAGS += -DHAS_DEFAULT_ELM=0
+   else
+       FLAGS += -DHAS_DEFAULT_ELM=1
+   endif
+
+   ifeq ($(THREADED_RECOMPILER), 0)
+       FLAGS += -DENABLE_THREADED_COMPILER=0
+   else
+       FLAGS += -DENABLE_THREADED_COMPILER=1
+   endif
+
+   ifneq (,$(findstring win,$(platform)))
+       FLAGS += -DLIGHTREC_STATIC=1
+       INCFLAGS += -isystem$(DEPS_DIR)/mman
+   endif
+
+   INCFLAGS += -I$(DEPS_DIR)/lightning/include \
+               -I$(DEPS_DIR)/lightrec \
+               -I$(CORE_DIR)/include \
+               -include $(CORE_DIR)/include/debug.h
+endif
+
+   SOURCES_C += $(CORE_EMU_DIR)/cpu.c \
+                $(CORE_EMU_DIR)/cdc.c \
+                $(CORE_EMU_DIR)/frontio.c \
+                $(CORE_EMU_DIR)/gpu.c
+
+   ifeq ($(NEED_TREMOR), 1)
+      SOURCES_C += $(sort $(wildcard $(MEDNAFEN_DIR)/tremor/*.c))
+   endif
+
+   SOURCES_C +=   $(CDROM_DIR)/CDAccess.c \
+                  $(CDROM_DIR)/CDAccess_CCD.c \
+                  $(CDROM_DIR)/CDAccess_Image.c \
+                  $(CDROM_DIR)/CDAccess_PBP.c \
+                  $(CDROM_DIR)/audioreader.c \
+                  $(CDROM_DIR)/cdromif.c \
+                  $(CDROM_DIR)/cdaccess_track.c \
+                  $(CDROM_DIR)/CDUtility.c \
+                  $(CDROM_DIR)/galois.c \
+                  $(CDROM_DIR)/l-ec.c \
+                  $(CDROM_DIR)/lec.c \
+                  $(CDROM_DIR)/recover-raw.c \
+                  $(CDROM_DIR)/edc_crc32.c
+
+   SOURCES_C += $(CORE_DIR)/libretro.c
+
+   SOURCES_C +=   $(MEDNAFEN_DIR)/mempatcher.c \
+                  $(MEDNAFEN_DIR)/general.c \
+                  $(MEDNAFEN_DIR)/error.c \
+                  $(MEDNAFEN_DIR)/video/Deinterlacer.c \
+                  $(CORE_DIR)/input.c \
+                  $(CORE_EMU_DIR)/dma.c \
+                  $(CORE_EMU_DIR)/gpu_polygon_sub.c \
+                  $(CORE_EMU_DIR)/gte.c \
+                  $(CORE_EMU_DIR)/irq.c \
+                  $(CORE_EMU_DIR)/mdec.c \
+                  $(CORE_EMU_DIR)/sio.c \
+                  $(CORE_EMU_DIR)/spu.c \
+                  $(CORE_EMU_DIR)/timer.c \
+                  $(CORE_DIR)/rhi/rhi_intf.c \
+                  $(CORE_DIR)/rhi/rhi_defer.c \
+                  $(MEDNAFEN_DIR)/cdstream.c \
+                  $(MEDNAFEN_DIR)/settings.c \
+                  $(MEDNAFEN_DIR)/state.c
+
+   ifneq ($(RHI_DUMP),)
+      SOURCES_C   += $(CORE_DIR)/rhi/rhi_dump.c
+      CFLAGS      += -DRHI_DUMP
+      CXXFLAGS    += -DRHI_DUMP
+   endif
+
+   # HAVE_TRACE: env-gated diagnostic tracing of VRAM-mutating ops.
+   # Unset by default - the trace facility is then completely absent
+   # from the build (no source compiled, no symbols, no rodata, no
+   # call instructions emitted at hooked sites). Set HAVE_TRACE=1 to
+   # include it; tracing is then ALSO env-gated at runtime by setting
+   # BEETLE_PSX_TRACE in the environment, see rhi/tt_trace.h.
+   ifeq ($(HAVE_TRACE), 1)
+      SOURCES_C   += $(CORE_DIR)/rhi/tt_trace.c
+      CFLAGS      += -DHAVE_TRACE
+      CXXFLAGS    += -DHAVE_TRACE
+   endif
+
+   # Shared HD-texture replacement/tracking engine (rhi/rhi_tt.c): used by both
+   # the GL and Vulkan RHI backends, so it is built whenever either HW renderer
+   # is. Image decode/encode goes through the libretro-common formats front end
+   # (IMAGE_FORMAT_SOURCES_C above). Gate on the renderer switches directly and
+   # publish the defines through FLAGS: SET_HAVE_HW and CFLAGS/CXXFLAGS are
+   # top-level-Makefile conventions that the jni (ndk-build) build never sets -
+   # it assigns HAVE_OPENGL/HAVE_VULKAN itself and consumes SOURCES_* + FLAGS
+   # only, so the previous gating left rhi_tt.c and the decoders out of the
+   # Android link entirely.
+   ifneq (,$(filter 1,$(HAVE_OPENGL) $(HAVE_VULKAN)))
+      FLAGS       += -DTEXTURE_DUMPING_ENABLED $(IMAGE_FORMAT_FLAGS)
+      SOURCES_C   += $(CORE_DIR)/rhi/rhi_tt.c \
+                     $(IMAGE_FORMAT_SOURCES_C)
+
+      # Same MSVC-C89 discipline as the Vulkan TU (see below).
+      $(CORE_DIR)/rhi/rhi_tt.o: CFLAGS += -Werror=declaration-after-statement
+   endif
+
+   ifeq ($(HAVE_VULKAN), 1)
+      SOURCES_CXX += $(wildcard $(CORE_DIR)/parallel-psx/SPIRV-Cross/*.cpp) \
+                     $(CORE_DIR)/rhi/rhi_spirv_reflect.cpp
+      SOURCES_C   += $(CORE_DIR)/rhi/rhi_lib_vulkan.c
+
+      # The Vulkan RHI TU targets MSVC C89, which rejects declarations after
+      # statements. GCC/Clang only diagnose this under an explicit flag, so make
+      # it a hard error for this one object (target-specific, no global impact).
+      $(CORE_DIR)/rhi/rhi_lib_vulkan.o: CFLAGS += -Werror=declaration-after-statement
+
+      EXTRA_INCLUDES += -I$(CORE_DIR)/parallel-psx/SPIRV-Cross \
+                        -I$(CORE_DIR)/parallel-psx/khronos/include
+
+      CXXFLAGS += -std=c++11 -DHAVE_LIBRETRO
+      ifneq ($(VULKAN_DEBUG),)
+         FLAGS += -DVULKAN_DEBUG
+      endif
+   endif
+
+   ifneq ($(STATIC_LINKING), 1)
+      SOURCES_C +=   $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
+                     $(LIBRETRO_COMM_DIR)/streams/file_stream_transforms.c \
+                     $(LIBRETRO_COMM_DIR)/file/file_path.c \
+                     $(LIBRETRO_COMM_DIR)/file/file_path_io.c \
+                     $(LIBRETRO_COMM_DIR)/file/retro_dirent.c \
+                     $(LIBRETRO_COMM_DIR)/vfs/vfs_implementation.c \
+                     $(LIBRETRO_COMM_DIR)/lists/dir_list.c \
+                     $(LIBRETRO_COMM_DIR)/lists/string_list.c \
+                     $(LIBRETRO_COMM_DIR)/string/stdstring.c \
+                     $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
+                     $(LIBRETRO_COMM_DIR)/compat/fopen_utf8.c \
+                     $(LIBRETRO_COMM_DIR)/compat/compat_strcasestr.c \
+                     $(LIBRETRO_COMM_DIR)/compat/compat_posix_string.c \
+                     $(LIBRETRO_COMM_DIR)/encodings/encoding_utf.c \
+                     $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
+                     $(LIBRETRO_COMM_DIR)/time/rtime.c \
+                     $(LIBRETRO_COMM_DIR)/hash/rhash.c
+
+      ifeq ($(HAVE_CDROM), 1)
+         CFLAGS    += -DHAVE_CDROM
+         CXXFLAGS  += -DHAVE_CDROM
+         SOURCES_C += $(LIBRETRO_COMM_DIR)/cdrom/cdrom.c \
+                      $(LIBRETRO_COMM_DIR)/vfs/vfs_implementation_cdrom.c
+
+         ifeq ($(CDROM_DEBUG), 1)
+            CFLAGS += -DCDROM_DEBUG
+            CXXFLAGS += -DCDROM_DEBUG
+         endif
+      endif
+
+      ifeq ($(NEED_THREADING), 1)
+         SOURCES_C += $(LIBRETRO_COMM_DIR)/rthreads/rthreads.c
+      endif
+
+   endif
+
+SOURCES_C +=   $(CORE_DIR)/pgxp/pgxp_cpu.c \
+               $(CORE_DIR)/pgxp/pgxp_gpu.c \
+               $(CORE_DIR)/pgxp/pgxp_gte.c \
+               $(CORE_DIR)/pgxp/pgxp_main.c \
+               $(CORE_DIR)/pgxp/pgxp_mem.c \
+               $(CORE_DIR)/pgxp/pgxp_value.c
+
+ifeq ($(HAVE_CHD), 1)
+   ifneq ($(SYSTEM_LIBCHDR), 1)
+      SOURCES_C += $(LIBCHDR_SOURCES_C)
+   endif
+
+   SOURCES_C += $(CDROM_DIR)/CDAccess_CHD.c
+endif ## ifeq ($(HAVE_CHD), 1)
+
+ifeq ($(HAVE_LIGHTREC), 1)
+   SOURCES_C +=   $(DEPS_DIR)/lightning/lib/jit_disasm.c \
+                  $(DEPS_DIR)/lightning/lib/jit_memory.c \
+                  $(DEPS_DIR)/lightning/lib/jit_names.c \
+                  $(DEPS_DIR)/lightning/lib/jit_note.c \
+                  $(DEPS_DIR)/lightning/lib/jit_print.c \
+                  $(DEPS_DIR)/lightning/lib/jit_size.c \
+                  $(DEPS_DIR)/lightning/lib/lightning.c \
+                  $(DEPS_DIR)/lightrec/blockcache.c \
+                  $(DEPS_DIR)/lightrec/constprop.c \
+                  $(DEPS_DIR)/lightrec/emitter.c \
+                  $(DEPS_DIR)/lightrec/interpreter.c \
+                  $(DEPS_DIR)/lightrec/lightrec.c \
+                  $(DEPS_DIR)/lightrec/memmanager.c \
+                  $(DEPS_DIR)/lightrec/optimizer.c \
+                  $(DEPS_DIR)/lightrec/reaper.c \
+                  $(DEPS_DIR)/lightrec/regcache.c \
+                  $(DEPS_DIR)/lightrec/tlsf/tlsf.c
+
+   ifeq ($(THREADED_RECOMPILER), 1)
+      SOURCES_C +=   $(DEPS_DIR)/lightrec/recompiler.c
+   endif
+
+   ifeq ($(LIGHTREC_LOG_LEVEL), 4)
+      SOURCES_C +=   $(DEPS_DIR)/lightrec/disassembler.c
+   endif
+
+   ifneq (,$(findstring win,$(platform)))
+      SOURCES_C +=   $(DEPS_DIR)/mman/sys/mman.c
+   endif
+
+endif ##ifeq ($(HAVE_LIGHTREC), 1)

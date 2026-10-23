@@ -1,0 +1,16 @@
+TM3O-16 source release
+
+Base revision: c27ab27c05569575e04b25e03e87fe3220fde599
+Upstream: https://github.com/libretro/beetle-psx-libretro
+
+Windows build used for the distributed DLL:
+
+mingw32-make platform=win HAVE_LIGHTREC=0 CC=gcc CXX=g++ AR=gcc-ar "GIT_VERSION= tm3o16" -j4
+
+Toolchain: WinLibs GCC 16.1.0.
+The generated libretro DLL must report 16777216 bytes for RETRO_MEMORY_SYSTEM_RAM.
+
+TM3O modifications extend main RAM/FastMap/save-state/libretro descriptors and
+DMA addressing to 16 MiB. The precise interpreter is used; Lightrec is disabled.
+
+License: see COPYING and the licenses of bundled dependencies.

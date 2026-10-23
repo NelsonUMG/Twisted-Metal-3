@@ -1,0 +1,8 @@
+{
+  "directory_url": "https://lobby.tu-dominio.example",
+  "runtime": {
+    "executable": "frontend/build/Release/TM3Online.exe",
+    "core": "frontend/build/Release/cores/beetle_psx_libretro.dll",
+    "game": "frontend/build/Release/game/TM3 Online.cue"
+  }
+}

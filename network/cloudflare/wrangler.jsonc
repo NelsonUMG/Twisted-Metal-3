@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tm3-room-directory",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-07-30",
+  "workers_dev": true,
+  "durable_objects": {"bindings": [{"name": "LOBBY", "class_name": "RoomDirectory"}]},
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["RoomDirectory"]}],
+  "observability": {"enabled": false}
+}

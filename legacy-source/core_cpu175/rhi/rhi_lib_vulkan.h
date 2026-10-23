@@ -1,0 +1,117 @@
+#ifndef __RHI_LIB_VULKAN_H__
+#define __RHI_LIB_VULKAN_H__
+
+#include <stdint.h>
+#include "libretro.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//void rhi_vulkan_set_blend_mode(enum blending_modes mode);
+void rhi_vulkan_set_environment(retro_environment_t cb);
+void rhi_vulkan_set_video_refresh(retro_video_refresh_t cb);
+void rhi_vulkan_get_system_av_info(struct retro_system_av_info *info);
+
+bool rhi_vulkan_open(bool is_pal);
+void rhi_vulkan_refresh_variables(void);
+void rhi_vulkan_prepare_frame(void);
+void rhi_vulkan_apply_pending_geometry(void);
+void rhi_vulkan_finalize_frame(const void *fb, unsigned width,
+                               unsigned height, unsigned pitch);
+
+void rhi_vulkan_set_tex_window(uint8_t tww, uint8_t twh,
+                               uint8_t twx, uint8_t twy);
+
+void rhi_vulkan_set_draw_offset(int16_t x, int16_t y);
+
+void rhi_vulkan_set_draw_area(uint16_t x0, uint16_t y0,
+                              uint16_t x1, uint16_t y1);
+
+void rhi_vulkan_set_vram_framebuffer_coords(uint32_t xstart, uint32_t ystart);
+
+void rhi_vulkan_set_horizontal_display_range(uint16_t x1, uint16_t x2);
+
+void rhi_vulkan_set_vertical_display_range(uint16_t y1, uint16_t y2);
+
+void rhi_vulkan_set_display_mode(bool depth_24bpp,
+                                 bool is_pal,
+                                 bool is_480i,
+                                 int width_mode); //enum width_modes
+
+void rhi_vulkan_push_triangle(float p0x, float p0y, float p0w,
+                              float p1x, float p1y, float p1w,
+                              float p2x, float p2y, float p2w,
+                              uint32_t c0,
+                              uint32_t c1,
+                              uint32_t c2,
+                              uint16_t t0x, uint16_t t0y,
+                              uint16_t t1x, uint16_t t1y,
+                              uint16_t t2x, uint16_t t2y,
+                              uint16_t min_u, uint16_t min_v,
+                              uint16_t max_u, uint16_t max_v,
+                              uint16_t texpage_x, uint16_t texpage_y,
+                              uint16_t clut_x, uint16_t clut_y,
+                              uint8_t texture_blend_mode,
+                              uint8_t depth_shift,
+                              bool dither,
+                              int blend_mode, //enum blending_modes
+                              bool mask_test, bool set_mask);
+
+void rhi_vulkan_push_quad(float p0x, float p0y, float p0w,
+                          float p1x, float p1y, float p1w,
+                          float p2x, float p2y, float p2w,
+                          float p3x, float p3y, float p3w,
+                          uint32_t c0,
+                          uint32_t c1,
+                          uint32_t c2,
+                          uint32_t c3,
+                          uint16_t t0x, uint16_t t0y,
+                          uint16_t t1x, uint16_t t1y,
+                          uint16_t t2x, uint16_t t2y,
+                          uint16_t t3x, uint16_t t3y,
+                          uint16_t min_u, uint16_t min_v,
+                          uint16_t max_u, uint16_t max_v,
+                          uint16_t texpage_x, uint16_t texpage_y,
+                          uint16_t clut_x, uint16_t clut_y,
+                          uint8_t texture_blend_mode,
+                          uint8_t depth_shift,
+                          bool dither,
+                          int blend_mode, //enum blending_modes
+                          bool mask_test, bool set_mask,
+                          bool is_sprite, bool may_be_2d);
+
+void rhi_vulkan_push_line(int16_t p0x, int16_t p0y,
+                          int16_t p1x, int16_t p1y,
+                          uint32_t c0,
+                          uint32_t c1,
+                          bool dither,
+                          int blend_mode, //enum blending_modes
+                          bool mask_test, bool set_mask);
+
+void rhi_vulkan_load_image(uint16_t x, uint16_t y,
+                           uint16_t w, uint16_t h,
+                           uint16_t *vram,
+                           bool mask_test, bool set_mask);
+
+bool rhi_vulkan_read_vram(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t *vram);
+
+void rhi_vulkan_fill_rect(uint32_t color,
+                          uint16_t x, uint16_t y,
+                          uint16_t w, uint16_t h);
+
+void rhi_vulkan_copy_rect(uint16_t src_x, uint16_t src_y,
+                          uint16_t dst_x, uint16_t dst_y,
+                          uint16_t w, uint16_t h, 
+                          bool mask_test, bool set_mask);
+
+void rhi_vulkan_toggle_display(bool status);
+
+bool rhi_vulkan_has_software_renderer(void);
+bool rhi_vulkan_context_ready(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /*__RHI_LIB_VULKAN_H__*/

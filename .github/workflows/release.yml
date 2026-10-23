@@ -1,0 +1,31 @@
+name: Publish Windows installer
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    # This runner uses the owner's tested runtime locally. Never put game data
+    # or private credentials on a shared public runner.
+    runs-on: [self-hosted, Windows, X64, tm3-release]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release version
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and VERSION differ' }
+      - run: python -m pip install -r requirements-build.txt
+      - name: Tests
+        env:
+          PYTHONPATH: network
+        run: python -m unittest network.test_system256_peer_cable network.test_lobby_client network.test_release_updater
+      - name: Build installer from tested runtime
+        shell: pwsh
+        run: python tools/build_installer.py --runtime "$env:TM3_RELEASE_RUNTIME" --iscc "$env:TM3_ISCC"
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create $env:GITHUB_REF_NAME dist/TM3Online-Setup.exe dist/SHA256SUMS.txt --verify-tag --generate-notes

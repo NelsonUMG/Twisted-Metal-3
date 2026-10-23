@@ -1,0 +1,244 @@
+#include <string.h>
+
+#include "pgxp_mem.h"
+#include "pgxp_cpu.h"
+#include "pgxp_gte.h"
+#include "pgxp_value.h"
+
+/* The PGXP shadow of PSX memory.  Previously a single
+ * `Mem[3 * 2048 * 1024 / 4]` array of PGXP_value (42 MB) carved into
+ * three equal 524288-entry slots, of which only:
+ *   - the 524288-entry User RAM slot was actually filled,
+ *   - the second slot needed 256 entries (1 KB scratch / 4 bytes),
+ *   - the third slot needed 2048 entries (8 KB hardware regs / 4 bytes).
+ * That left ~27 MB of unused PGXP_value in the middle and tail of
+ * the buffer.  Splitting into three right-sized arrays drops the
+ * static BSS from 42 MB to about 14.4 MB without changing the
+ * external (u32) contract of PGXP_ConvertAddress.  The offset
+ * constants are kept so callers that print or compare with
+ * InvalidAddress continue to work, but the offsets are now packed
+ * back-to-back instead of on 524288-entry strides. */
+#define USER_MEM_COUNT		(2048 * 1024 / 4)	/* 524288 entries: 2 MB / 4 */
+#define SCRATCH_MEM_COUNT	(1024 / 4)		/* 256 entries: 1 KB / 4 */
+#define REGISTER_MEM_COUNT	(0x2000 / 4)		/* 2048 entries: 8 KB / 4 */
+
+static PGXP_value UserMem[USER_MEM_COUNT];
+static PGXP_value ScratchMem[SCRATCH_MEM_COUNT];
+static PGXP_value RegisterMem[REGISTER_MEM_COUNT];
+
+const uint32_t UserMemOffset  = 0;
+const uint32_t ScratchOffset  = USER_MEM_COUNT;
+const uint32_t RegisterOffset = USER_MEM_COUNT + SCRATCH_MEM_COUNT;
+const uint32_t InvalidAddress = USER_MEM_COUNT + SCRATCH_MEM_COUNT + REGISTER_MEM_COUNT;
+
+void PGXP_InitMem()
+{
+	memset(UserMem,     0, sizeof(UserMem));
+	memset(ScratchMem,  0, sizeof(ScratchMem));
+	memset(RegisterMem, 0, sizeof(RegisterMem));
+}
+
+/*  Playstation Memory Map (from Playstation doc by Joshua Walker)
+0x0000_0000-0x0000_ffff		Kernel (64K)
+0x0001_0000-0x001f_ffff		User Memory (1.9 Meg)
+
+0x1f00_0000-0x1f00_ffff		Parallel Port (64K)
+
+0x1f80_0000-0x1f80_03ff		Scratch Pad (1024 bytes)
+
+0x1f80_1000-0x1f80_2fff		Hardware Registers (8K)
+
+0x1fc0_0000-0x1fc7_ffff		BIOS (512K)
+
+0x8000_0000-0x801f_ffff		Kernel and User Memory Mirror (2 Meg) Cached
+0x9fc0_0000-0x9fc7_ffff		BIOS Mirror (512K) Cached
+
+0xa000_0000-0xa01f_ffff		Kernel and User Memory Mirror (2 Meg) Uncached
+0xbfc0_0000-0xbfc7_ffff		BIOS Mirror (512K) Uncached
+*/
+void ValidateAddress(uint32_t addr)
+{
+	if ((addr >= 0x00000000) && (addr <= 0x007fffff)) {}	/* Kernel + User Memory x 8 */
+	else if ((addr >= 0x1f000000) && (addr <= 0x1f00ffff)) {}	/* Parallel Port */
+	else if ((addr >= 0x1f800000) && (addr <= 0x1f8003ff)) {}	/* Scratch Pad */
+	else if ((addr >= 0x1f801000) && (addr <= 0x1f802fff)) {}	/* Hardware Registers */
+	else if ((addr >= 0x1fc00000) && (addr <= 0x1fc7ffff)) {}	/* Bios */
+	else if ((addr >= 0x80000000) && (addr <= 0x807fffff)) {}	/* Kernel + User Memory x 8 Cached mirror */
+	else if ((addr >= 0x9fc00000) && (addr <= 0x9fc7ffff)) {}	/* Bios Cached Mirror */
+	else if ((addr >= 0xa0000000) && (addr <= 0xa07fffff)) {}	/* Kernel + User Memory x 8 Uncached mirror */
+	else if ((addr >= 0xbfc00000) && (addr <= 0xbfc7ffff)) {}	/* Bios Uncached Mirror */
+	else if (addr == 0xfffe0130) {}								/* Used for cache flushing */
+	else
+	{
+		/* Unrecognized address - debug breakpoint hook would go here */
+	}
+
+}
+
+uint32_t PGXP_ConvertAddress(uint32_t addr)
+{
+	uint32_t paddr = addr;
+
+	switch (paddr >> 24)
+	{
+	case 0x80:
+	case 0xa0:
+	case 0x00:
+		/* RAM further mirrored over 8MB */
+		paddr = ((paddr & 0x7FFFFF) % 0x200000) >> 2;
+		paddr = UserMemOffset + paddr;
+		break;
+	default:
+		if ((paddr >> 20) == 0x1f8)
+		{
+			if (paddr >= 0x1f801000)
+			{
+				paddr = ((paddr & 0xFFFF) - 0x1000) >> 2;
+				paddr = RegisterOffset + paddr;
+				break;
+			}
+			else
+			{
+				paddr = (paddr & 0x3FF) >> 2;
+				paddr = ScratchOffset + paddr;
+				break;
+			}
+		}
+
+		paddr = InvalidAddress;
+		break;
+	}
+
+	return paddr;
+}
+
+PGXP_value* GetPtr(uint32_t addr)
+{
+	addr = PGXP_ConvertAddress(addr);
+
+	if (addr < ScratchOffset)
+		return &UserMem[addr - UserMemOffset];
+	if (addr < RegisterOffset)
+		return &ScratchMem[addr - ScratchOffset];
+	if (addr < InvalidAddress)
+		return &RegisterMem[addr - RegisterOffset];
+	return NULL;
+}
+
+PGXP_value* ReadMem(uint32_t addr)
+{
+	return GetPtr(addr);
+}
+
+void ValidateAndCopyMem(PGXP_value* dest, uint32_t addr, uint32_t value)
+{
+	PGXP_value* pMem = GetPtr(addr);
+	if (pMem != NULL)
+	{
+		Validate(pMem, value);
+		*dest = *pMem;
+		return;
+	}
+
+	*dest = PGXP_value_invalid_address;
+}
+
+void ValidateAndCopyMem16(PGXP_value* dest, uint32_t addr, uint32_t value, int sign)
+{
+	uint32_t validMask = 0;
+	psx_value val, mask;
+	PGXP_value* pMem = GetPtr(addr);
+	if (pMem != NULL)
+	{
+		mask.d = val.d = 0;
+		/* determine if high or low word */
+		if ((addr % 4) == 2)
+		{
+			val.w.h = value;
+			mask.w.h = 0xFFFF;
+			validMask = VALID_1;
+		}
+		else
+		{
+			val.w.l = value;
+			mask.w.l = 0xFFFF;
+			validMask = VALID_0;
+		}
+
+		/* validate and copy whole value */
+		MaskValidate(pMem, val.d, mask.d, validMask);
+		*dest = *pMem;
+
+		/* if high word then shift */
+		if ((addr % 4) == 2)
+		{
+			dest->x = dest->y;
+			dest->lFlags = dest->hFlags;
+			dest->compFlags[0] = dest->compFlags[1];
+		}
+
+		/* truncate value */
+		dest->y = (dest->x < 0) ? -1.f * sign : 0.f;/* 0.f; */
+		dest->hFlags = 0;
+		dest->value = value;
+		dest->compFlags[1] = VALID;	/* iCB: High word is valid, just 0 */
+		return;
+	}
+
+	*dest = PGXP_value_invalid_address;
+}
+
+void WriteMem(PGXP_value* value, uint32_t addr)
+{
+	PGXP_value* pMem = GetPtr(addr);
+
+	if (pMem)
+		*pMem = *value;
+}
+
+void WriteMem16(PGXP_value* src, uint32_t addr)
+{
+	PGXP_value* dest = GetPtr(addr);
+
+	if (dest)
+	{
+		/* Load dest->value into a local psx_value, manipulate, store
+		 * back.  The previous code aliased dest->value (a u32) through
+		 * a psx_value pointer, which is a strict-aliasing violation
+		 * (u32 and psx_value are not compatible types in C's effective
+		 * type rules).  The round-trip through a local is bit-exact,
+		 * defined behaviour, and the compiler optimises it identically
+		 * on every backend we ship. */
+		psx_value pVal;
+		pVal.d = dest->value;
+
+		/* determine if high or low word */
+		if ((addr % 4) == 2)
+		{
+			dest->y = src->x;
+			dest->hFlags = src->lFlags;
+			dest->compFlags[1] = src->compFlags[0];
+			pVal.w.h = (uint16_t)src->value;
+		}
+		else
+		{
+			dest->x = src->x;
+			dest->lFlags = src->lFlags;
+			dest->compFlags[0] = src->compFlags[0];
+			pVal.w.l = (uint16_t)src->value;
+		}
+
+		dest->value = pVal.d;
+
+		/* overwrite z/w if valid */
+		if (src->compFlags[2] == VALID)
+		{
+			dest->z = src->z;
+			dest->compFlags[2] = src->compFlags[2];
+		}
+
+
+		/*dest->valid = dest->valid && src->valid; */
+		dest->gFlags |= src->gFlags;				/* inherit flags from both values (?) */
+	}
+}
