@@ -24,10 +24,15 @@ def main():
         subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm',
             '--distpath', str(payload), '--workpath', str(ROOT/'build/pyinstaller'),
             str(ROOT/'installer/lobby.spec')], cwd=ROOT, check=True)
+    if not args.skip_freeze:
+        subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm',
+            '--distpath', str(payload), '--workpath', str(ROOT/'build/pyinstaller-updater'),
+            str(ROOT/'installer/updater.spec')], cwd=ROOT, check=True)
+    if not (payload/'TM3Update.exe').is_file(): raise FileNotFoundError('Frozen updater missing')
     if not (payload/'TM3Lobby.exe').is_file(): raise FileNotFoundError('Frozen lobby missing')
     # Explicit allowlist prevents accidental distribution of game/user data.
     names = ('system256/beetle_psx_system256.dll', 'system256/beetle_psx_system256_vulkan.dll',
-             'system256/tm3_vulkan_frontend.dll', 'system256/libwinpthread-1.dll',
+             'system256/tm3_vulkan_frontend.dll', 'system256/TM3System256UI.dll', 'system256/libwinpthread-1.dll',
              'TM3Online.exe', 'cores/beetle_psx_libretro.dll')
     for name in names:
         source = args.runtime/name
@@ -49,7 +54,16 @@ def main():
     for path in payload.rglob('*'):
         if path.suffix.lower() in ('.bin', '.cue', '.iso', '.rom'):
             raise ValueError('Unexpected game/BIOS file in payload: ' + str(path))
+    # Ship the maintained Python modules as application files as well as the frozen entry.
+    for directory in ('network', '256mb system/src'):
+        for source in (ROOT/directory).glob('*.py'):
+            if source.name.startswith(('test_', 'qa_')): continue
+            dest=payload/directory/source.name;dest.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(source,dest)
     version = (ROOT/'VERSION').read_text().strip()
+    sys.path.insert(0,str(ROOT/'tools'))
+    from build_update_assets import build
+    build(payload, ROOT/'dist/update', version)
     if args.stage_only:
         print(json.dumps(dict(payload=str(payload), version=version, game_images_included=False)))
         return

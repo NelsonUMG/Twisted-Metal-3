@@ -11,6 +11,8 @@ public:
   explicit ConsoleUI(CoreHost& core):core_(core){}
   void attach(HWND window,const std::filesystem::path& base,const std::filesystem::path& game,const std::filesystem::path& engine,bool linked);
   bool handle(HWND,UINT,WPARAM,LPARAM);
+  void setSystem256(bool vulkan){system256_=true;vulkan_=vulkan;}
+  void closeSettings(){if(settings_)SendMessageW(settings_,WM_CLOSE,0,0);}
   bool showStatistics() const{return stats_;}
   bool paused() const{return paused_.load();}
   void openSettings(int page);
@@ -48,6 +50,7 @@ private:
   uint32_t previousPad_=0;
   ULONGLONG captureDeadline_=0;
   std::array<int,16> pads_{};
+  bool system256_=false,vulkan_=false;
   bool linked_=false,smooth_=false,muted_=false,stats_=false,controller_=true,fullscreen_=false;
   bool confirmClose_=false,doubleClick_=true,controllerWindow_=false,propertiesWindow_=false,startFullscreen_=false;
   bool rebuilding_=false;

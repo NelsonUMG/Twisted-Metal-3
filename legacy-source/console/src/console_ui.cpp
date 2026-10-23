@@ -90,11 +90,18 @@ bool ConsoleUI::translate(MSG& message){
     int key=static_cast<int>(message.wParam);if(key==VK_ESCAPE)finishBinding(0,true);
     else if(captureId_<260){finishBinding(tm3input::virtualKey(message.wParam,message.lParam));}return true;
   }
+  // Enter must never activate a remembered default Close button.
+  // Binding capture above still accepts Enter as a game input.
+  if(settings_&&(message.hwnd==settings_||IsChild(settings_,message.hwnd))&&
+     (message.message==WM_KEYDOWN||message.message==WM_KEYUP)&&message.wParam==VK_RETURN){
+    wchar_t cls[32]{};GetClassNameW(message.hwnd,cls,32);
+    if(std::wstring(cls)!=L"ComboBox")return true;
+  }
   return settings_&&IsDialogMessageW(settings_,&message);
 }
 std::wstring ConsoleUI::menuCaption(HMENU menu,int index){MENUITEMINFOW info{sizeof(info)};info.fMask=MIIM_DATA;if(!GetMenuItemInfoW(menu,index,TRUE,&info)||!info.dwItemData)return {};return reinterpret_cast<MenuLabel*>(info.dwItemData)->text;}
 bool ConsoleUI::draw(UINT message,LPARAM l){
-  if(message==WM_MEASUREITEM){auto* measure=reinterpret_cast<MEASUREITEMSTRUCT*>(l);if(measure->CtlType==ODT_MENU){auto* value=reinterpret_cast<MenuLabel*>(measure->itemData);HDC dc=GetDC(window_);auto old=SelectObject(dc,font_);SIZE extent{};GetTextExtentPoint32W(dc,value->text.c_str(),static_cast<int>(value->text.size()),&extent);SelectObject(dc,old);ReleaseDC(window_,dc);measure->itemWidth=value->separator?0:extent.cx+(value->bar?22:65);measure->itemHeight=value->separator?9:value->bar?25:29;return true;}if(measure->CtlType==ODT_LISTBOX){measure->itemHeight=38;return true;}if(measure->CtlType==ODT_COMBOBOX){measure->itemHeight=24;return true;}}
+  if(message==WM_MEASUREITEM){auto* measure=reinterpret_cast<MEASUREITEMSTRUCT*>(l);if(measure->CtlType==ODT_MENU){auto* value=reinterpret_cast<MenuLabel*>(measure->itemData);HDC dc=GetDC(window_);auto old=SelectObject(dc,font_);SIZE extent{};GetTextExtentPoint32W(dc,value->text.c_str(),static_cast<int>(value->text.size()),&extent);SelectObject(dc,old);ReleaseDC(window_,dc);measure->itemWidth=value->separator?0:extent.cx+(value->bar?22:65);measure->itemHeight=value->separator?9:value->bar?25:29;return true;}if(measure->CtlType==ODT_LISTBOX){measure->itemHeight=30;return true;}if(measure->CtlType==ODT_COMBOBOX){measure->itemHeight=20;return true;}}
   if(message!=WM_DRAWITEM)return false;
   auto* draw=reinterpret_cast<DRAWITEMSTRUCT*>(l);
   if(draw->CtlType==ODT_BUTTON){const bool checkbox=GetWindowLongPtrW(draw->hwndItem,GWLP_USERDATA)==1;const bool disabled=!IsWindowEnabled(draw->hwndItem);RECT rect=draw->rcItem;HBRUSH fill=CreateSolidBrush(checkbox?RGB(22,29,41):(draw->itemState&ODS_SELECTED)?RGB(70,70,70):RGB(35,49,69));FillRect(draw->hDC,&rect,fill);DeleteObject(fill);HPEN pen=CreatePen(PS_SOLID,1,RGB(65,82,108));auto oldPen=SelectObject(draw->hDC,pen);auto oldBrush=SelectObject(draw->hDC,GetStockObject(HOLLOW_BRUSH));if(checkbox)Rectangle(draw->hDC,rect.left+2,rect.top+7,rect.left+14,rect.top+19);else Rectangle(draw->hDC,rect.left,rect.top,rect.right,rect.bottom);SelectObject(draw->hDC,oldPen);SelectObject(draw->hDC,oldBrush);DeleteObject(pen);wchar_t text[240]{};GetWindowTextW(draw->hwndItem,text,240);SetBkMode(draw->hDC,TRANSPARENT);SetTextColor(draw->hDC,disabled?RGB(120,120,120):RGB(235,235,235));auto oldFont=SelectObject(draw->hDC,font_);if(checkbox)rect.left+=23;DrawTextW(draw->hDC,text,-1,&rect,DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS|(checkbox?DT_LEFT:DT_CENTER));SelectObject(draw->hDC,oldFont);return true;}
@@ -123,7 +130,7 @@ void ConsoleUI::attach(HWND window,const std::filesystem::path& base,const std::
   secondController_=value(L"Player2Enabled",0)!=0;controllerIndex2_=std::clamp(value(L"Player2ControllerIndex",-1),-1,3);
   for(unsigned i=0;i<16;++i){const auto key=L"Player2Key"+std::to_wstring(i);keys2_[i]=std::clamp(value(key.c_str(),tm3keyboard::keys2[i]),0,255);const auto pad=L"Player2Pad"+std::to_wstring(i);pads2_[i]=std::clamp(value(pad.c_str(),tm3input::pads[i]),0,24);}
   updateCore();
-  font_=CreateFontW(-16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+  font_=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,L"Segoe UI");
   iconFont_=CreateFontW(-18,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,L"Segoe MDL2 Assets");
   buildMenu();
   fullscreen_=(GetWindowLongPtrW(window_,GWL_STYLE)&WS_POPUP)!=0;
@@ -217,7 +224,7 @@ bool ConsoleUI::handle(HWND,UINT message,WPARAM w,LPARAM l){
   if(draw(message,l))return true;
   if(message==WM_CLOSE&&confirmClose_){if(MessageBoxW(window_,L"¿Quieres cerrar el juego?",L"Cerrar juego",MB_YESNO|MB_ICONQUESTION)!=IDYES)return true;}
   if(message==WM_LBUTTONDBLCLK&&doubleClick_){fullscreen();return true;}
-  int id=0;if(message==WM_COMMAND)id=LOWORD(w);else if(message==WM_KEYDOWN||message==WM_SYSKEYDOWN){if(l&(1u<<30))return false;const int key=tm3input::virtualKey(w,l);if(fullscreenKey_&&key==fullscreenKey_)id=full;else if(captureKey_&&key==captureKey_)id=shot;else if(exitKey_&&key==exitKey_)id=closeGame;}
+  int id=0;if(message==WM_COMMAND)id=LOWORD(w);else if(message==WM_KEYDOWN||message==WM_SYSKEYDOWN){if(l&(1u<<30))return false;const int key=tm3input::virtualKey(w,l);if(fullscreenKey_&&key==fullscreenKey_)id=full;else if(captureKey_&&key==captureKey_)id=shot;else if(exitKey_&&key!=VK_RETURN&&key==exitKey_)id=closeGame;}
   if(id>=1100&&id<1112){openSettings(id-1100);return true;}
   switch(id){
   case 1012:if(linked_)core_.net().requestReturnToMenu();return true;
@@ -239,7 +246,7 @@ HWND ConsoleUI::make(const wchar_t* cls,const wchar_t* text,DWORD style,int x,in
   const bool group=std::wstring(cls)==L"BUTTON"&&(style&BS_TYPEMASK)==BS_GROUPBOX;
   if(std::wstring(cls)==L"BUTTON"&&(style&BS_TYPEMASK)==BS_PUSHBUTTON)style=(style&~BS_TYPEMASK)|BS_OWNERDRAW;
   if(std::wstring(cls)==L"COMBOBOX")style|=CBS_OWNERDRAWFIXED|CBS_HASSTRINGS;
-  const auto localized=tm3loc::translate(text);auto h=CreateWindowW(cls,localized.c_str(),WS_CHILD|WS_VISIBLE|style,x+200,y+12,width,height,settings_,reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),GetModuleHandleW(nullptr),nullptr);
+  const auto localized=tm3loc::translate(text);auto h=CreateWindowW(cls,localized.c_str(),WS_CHILD|WS_VISIBLE|style,(x+200)*4/5,(y+12)*4/5,width*4/5,height*4/5,settings_,reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)),GetModuleHandleW(nullptr),nullptr);
   SendMessageW(h,WM_SETFONT,reinterpret_cast<WPARAM>(font_),TRUE);
   if(std::wstring(cls)!=L"STATIC")SetWindowTheme(h,L"DarkMode_Explorer",nullptr);
   if(group){SetWindowSubclass(h,groupSkin,1,reinterpret_cast<DWORD_PTR>(font_));SetWindowLongPtrW(h,GWL_STYLE,GetWindowLongPtrW(h,GWL_STYLE)|WS_CLIPSIBLINGS);SetWindowPos(h,HWND_BOTTOM,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);}
@@ -272,16 +279,16 @@ void ConsoleUI::openSettings(int selected){
   RECT owner{};GetWindowRect(window_,&owner);
   const int x=std::clamp(static_cast<int>(owner.left)+30,0,std::max(0,GetSystemMetrics(SM_CXSCREEN)-1000));
   const int y=std::clamp(static_cast<int>(owner.top)+30,0,std::max(0,GetSystemMetrics(SM_CYSCREEN)-790));
-  settings_=CreateWindowExW(WS_EX_CONTROLPARENT,wc.lpszClassName,L"TM3 Online — Ajustes",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_CLIPCHILDREN,x,y,1000,760,window_,nullptr,wc.hInstance,this);
+  settings_=CreateWindowExW(WS_EX_CONTROLPARENT,wc.lpszClassName,L"TM3 Online — Ajustes",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_CLIPCHILDREN,x,y,800,620,window_,nullptr,wc.hInstance,this);
   BOOL dark=TRUE;DwmSetWindowAttribute(settings_,20,&dark,sizeof(dark));
-  categories_=CreateWindowW(L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT,12,12,175,535,settings_,reinterpret_cast<HMENU>(401),wc.hInstance,nullptr);
-  SendMessageW(categories_,WM_SETFONT,reinterpret_cast<WPARAM>(font_),TRUE);SendMessageW(categories_,LB_SETITEMHEIGHT,0,38);
+  categories_=CreateWindowW(L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT,10,10,140,428,settings_,reinterpret_cast<HMENU>(401),wc.hInstance,nullptr);
+  SendMessageW(categories_,WM_SETFONT,reinterpret_cast<WPARAM>(font_),TRUE);SendMessageW(categories_,LB_SETITEMHEIGHT,0,30);
   pageTitle_=nullptr;
-  help_=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_BORDER|SS_LEFT,12,560,958,100,settings_,reinterpret_cast<HMENU>(402),wc.hInstance,nullptr);
+  help_=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_BORDER|SS_LEFT,10,448,766,66,settings_,reinterpret_cast<HMENU>(402),wc.hInstance,nullptr);
   SendMessageW(pageTitle_,WM_SETFONT,reinterpret_cast<WPARAM>(font_),TRUE);SendMessageW(help_,WM_SETFONT,reinterpret_cast<WPARAM>(font_),TRUE);
   SetWindowSubclass(help_,helpSkin,4,reinterpret_cast<DWORD_PTR>(font_));
   for(const auto& spec:std::initializer_list<std::pair<int,const wchar_t*>>{{306,L"Restablecer valores"},{302,L"Cerrar"}}){
-    HWND button=CreateWindowW(L"BUTTON",tm3loc::translate(spec.second).c_str(),WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,spec.first==306?660:860,675,spec.first==306?185:110,34,settings_,reinterpret_cast<HMENU>(static_cast<INT_PTR>(spec.first)),wc.hInstance,nullptr);
+    HWND button=CreateWindowW(L"BUTTON",tm3loc::translate(spec.second).c_str(),WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,spec.first==306?510:672,530,spec.first==306?150:104,28,settings_,reinterpret_cast<HMENU>(static_cast<INT_PTR>(spec.first)),wc.hInstance,nullptr);
     SendMessageW(button,WM_SETFONT,reinterpret_cast<WPARAM>(font_),TRUE);SetWindowTheme(button,L"DarkMode_Explorer",nullptr);
   }
   page_=selected;navigation();page();ShowWindow(settings_,SW_SHOWNORMAL);
@@ -291,7 +298,7 @@ void ConsoleUI::page(){
   finishBinding(0,true);KillTimer(settings_,601);rebuilding_=true;
   for(auto h:controls_)DestroyWindow(h);controls_.clear();
   SetWindowTextW(settings_,controllerWindow_?L"TM3 Online — Ajustes de mandos":propertiesWindow_?L"TM3 Online — Propiedades del juego":L"TM3 Online — Ajustes");
-  SetWindowTextW(pageTitle_,pages[page_]);SetWindowTextW(help_,helpTexts[page_]);
+  SetWindowTextW(pageTitle_,pages[page_]);SetWindowTextW(help_,system256_?L"Audio, mandos y presentación se aplican durante la sesión. BIOS, resolución y opciones del motor se aplican en la próxima partida.":helpTexts[page_]);
   const auto text=[&](const std::wstring& value,int x,int y,int width,int height,int id=0){return make(L"STATIC",value.c_str(),0,x,y,width,height,id);};
   const auto group=[&](const wchar_t* name,int y,int height){return make(L"BUTTON",name,BS_GROUPBOX,0,y,735,height,0);};
   const auto check=[&](const wchar_t* value,int x,int y,int id,bool on,bool enabled=true){auto h=make(L"BUTTON",value,(enabled?BS_AUTOCHECKBOX:BS_OWNERDRAW)|WS_TABSTOP,x,y,340,28,id);if(enabled)SendMessageW(h,BM_SETCHECK,on?BST_CHECKED:BST_UNCHECKED,0);else SetWindowLongPtrW(h,GWLP_USERDATA,1);EnableWindow(h,enabled);return h;};
@@ -330,7 +337,7 @@ void ConsoleUI::page(){
     for(int slot=0;slot<2;++slot){const int y=slot*145;group(slot==0?L"Tarjeta de memoria 1":L"Tarjeta de memoria 2",y,125);text(L"Tipo de tarjeta:",16,y+35,220,25);combo(0,255,y+30,450,{L"Guardado automático"},0,false);text(L"Directorio:",16,y+78,220,25);field(L"Guardados del jugador",255,y+73,450);}
     make(L"BUTTON",L"Abrir directorio de guardados",BS_PUSHBUTTON,16,322,315,34,304);break;
   case 5:
-    group(L"Renderizado",0,110);text(L"Renderizador:",16,35,220,25);combo(0,255,30,450,{L"Software"},0,false);
+    group(L"Renderizado",0,110);text(L"Renderizador:",16,35,220,25);combo(0,255,30,450,{system256_&&vulkan_?L"Vulkan":L"Software"},0,false);
     text(L"Resolución interna:",16,75,220,25);combo(211,255,70,450,{L"1x (original)",L"2x",L"4x"},resolution_==4?2:resolution_==2?1:0);
     group(L"Presentación",130,155);text(L"Relación de aspecto:",16,165,220,25);combo(202,255,160,450,{L"Automática",L"4:3",L"Estirar a la ventana"},aspect_);
     text(L"Escalado:",16,210,220,25);combo(203,255,205,450,{L"Vecino más cercano",L"Suavizado de presentación"},smooth_?1:0);
@@ -354,8 +361,8 @@ void ConsoleUI::page(){
   case 8:
     text(tr(L"PLAYSTATION CONTROLLERS",L"MANDOS PLAYSTATION"),8,0,425,28);
     combo(290,450,-2,275,{tr(L"Player 1 / Port 1",L"Jugador 1 / Puerto 1"),tr(L"Player 2 / Port 2",L"Jugador 2 / Puerto 2")},editingPort_);
-    text(tr(L"Each pair: keyboard on the left, controller on the right.",L"Cada pareja: teclado a la izquierda, mando a la derecha."),8,32,710,25);
-    {const auto bind=[&](int i,int x,int y){text(buttonNames[i],x,y,170,22);make(L"BUTTON",tm3input::keyName(editingKeys()[i]).c_str(),BS_PUSHBUTTON|WS_TABSTOP,x,y+23,80,28,220+i);make(L"BUTTON",tm3input::padNames[editingPads()[i]],BS_PUSHBUTTON|WS_TABSTOP,x+85,y+23,80,28,260+i);};
+    text(tr(L"Keyboard bindings · controllers use the standard layout.",L"Asignaciones de teclado · el mando usa la distribución estándar."),8,32,710,25);
+    {const auto bind=[&](int i,int x,int y){text(buttonNames[i],x,y,170,22);make(L"BUTTON",tm3input::keyName(editingKeys()[i]).c_str(),BS_PUSHBUTTON|WS_TABSTOP,x,y+23,165,28,220+i);};
     bind(12,8,75);bind(10,190,75);bind(11,380,75);bind(13,562,75);
     for(int i=0;i<4;++i)bind(4+i,8,145+i*62);
     const int action[]={9,1,8,0};for(int i=0;i<4;++i)bind(action[i],562,145+i*62);
@@ -402,7 +409,7 @@ void ConsoleUI::finishBinding(int value,bool cancel){
     else if(id>=220&&id<236){editingKeys()[id-220]=std::clamp(value,0,255);if(value){if(captureKey_==value)captureKey_=0;if(fullscreenKey_==value)fullscreenKey_=0;if(exitKey_==value)exitKey_=0;}}
     updateCore();save();
   }
-  bindingLabels();SetWindowTextW(help_,helpTexts[page_]);
+  bindingLabels();SetWindowTextW(help_,system256_?L"Audio, mandos y presentación se aplican durante la sesión. BIOS, resolución y opciones del motor se aplican en la próxima partida.":helpTexts[page_]);
 }
 void ConsoleUI::pollPadCapture(uint32_t mask){
   if(captureId_&&GetTickCount64()>=captureDeadline_){finishBinding(0,true);return;}

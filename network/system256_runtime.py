@@ -126,6 +126,8 @@ def run(args):
     status('starting')
     link = None; cores = []; threads = []; cable = None; temporary_owner = None
     vulkan_frontend = None; hardware_core = False; use_vulkan = False; video_adapter = None
+    native_ui = None; native_handle = None
+    capture_requested = threading.Event()
     stop = threading.Event(); errors = []; pcm = queue.Queue(64)
     audio_stats = {'pcm_generated_bytes': 0, 'pcm_queue_dropped_bytes': 0,
                    'pcm_stale_dropped_bytes': 0, 'audio_output_bytes': 0,
@@ -400,6 +402,17 @@ def run(args):
                 raise ValueError('Las dos PC no acordaron el mismo renderizador de vídeo.')
 
             video_adapter = core.video_adapter
+            ui_path = folder/'TM3System256UI.dll'
+            if window_handle and ui_path.is_file():
+                native_ui = C.CDLL(str(ui_path.resolve()))
+                native_ui.tm3ui_attach.argtypes = [C.c_void_p, C.c_wchar_p, C.c_wchar_p, C.c_int]
+                native_ui.tm3ui_attach.restype = C.c_void_p
+                native_ui.tm3ui_poll.argtypes = [C.c_void_p]
+                native_ui.tm3ui_detach.argtypes = [C.c_void_p]
+                native_handle = native_ui.tm3ui_attach(window_handle, str(Path(args.settings).resolve().parent),
+                    str((folder/'TM3_SYSTEM256.cue').resolve()), actual_backend == 'vulkan')
+                if not native_handle: raise RuntimeError('No se pudo abrir la interfaz de SYSTEM256.')
+
             start = time.perf_counter()
             qa_times = []; qa_hashes = []
             qa_target = args.qa_gameplay_ticks
@@ -416,6 +429,11 @@ def run(args):
                 try:
                     while not stop.is_set() and not cable.stopped:
                         core.step()
+                        if capture_requested.is_set():
+                            capture_requested.clear()
+                            captures = Path(args.settings).resolve().parent/'captures'
+                            captures.mkdir(exist_ok=True)
+                            core.screenshot(str(captures/f'TM3_{time.time_ns()}.bmp'))
                         if args.qa_screenshot and core.transitions and core.transitions[-1]['frame'] == core.frame:
                             core.screenshot(str(Path(args.qa_screenshot).with_name(f'menu{args.side}_{core.frame}.bmp')))
                         is_main_menu = core.word(0x89a0c) == main_menu
@@ -438,7 +456,19 @@ def run(args):
             video_frames_presented = 0
             last_presented_frame = -1
             fullscreen = False
+            settings_stamp = None
             while not stop.is_set():
+                if native_handle and native_ui.tm3ui_poll(native_handle) == 1:
+                    capture_requested.set()
+                stamp = Path(args.settings).stat().st_mtime_ns
+                if stamp != settings_stamp:
+                    updated = configparser.ConfigParser()
+                    updated.read(args.settings, encoding='utf-8-sig')
+                    settings = updated['Console'] if updated.has_section('Console') else {}
+                    settings_stamp = stamp
+                    audio.set_volume(0 if option('Muted') else max(0,min(100,option('Volume',100)))/100)
+                    core.vulkan_smooth = bool(option('Smooth'))
+                    core.vulkan_preserve_aspect = option('Aspect') != 2
                 cable.check_role_timeout()
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -542,6 +572,7 @@ def run(args):
         if dll_search_handle:
             dll_search_handle.close()
         if link: link.close()
+        if native_handle: native_ui.tm3ui_detach(native_handle)
         pygame.quit()
         if not errors:
             try:

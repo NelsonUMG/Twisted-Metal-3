@@ -35,3 +35,30 @@ Name: "{group}\TM3 Online"; Filename: "{app}\TM3Lobby.exe"
 Name: "{userdesktop}\TM3 Online"; Filename: "{app}\TM3Lobby.exe"
 [Run]
 Filename: "{app}\TM3Lobby.exe"; Description: "Abrir TM3 Online"; Flags: nowait postinstall skipifsilent
+
+Filename: "{app}\TM3Lobby.exe"; Flags: nowait runasoriginaluser; Check: RestartRequested
+
+[Code]
+function OpenProcess(Access: LongWord; Inherit: Boolean; PID: LongWord): THandle;
+  external 'OpenProcess@kernel32.dll stdcall';
+function WaitForSingleObject(Handle: THandle; Milliseconds: LongWord): LongWord;
+  external 'WaitForSingleObject@kernel32.dll stdcall';
+function CloseHandle(Handle: THandle): Boolean;
+  external 'CloseHandle@kernel32.dll stdcall';
+function InitializeSetup(): Boolean;
+var Parent: THandle; PID: Integer;
+begin
+  Result := True;
+  PID := StrToIntDef(ExpandConstant('{param:WAITPID|0}'), 0);
+  if PID <> 0 then begin
+    Parent := OpenProcess($00100000, False, PID);
+    if Parent <> 0 then begin
+      Result := WaitForSingleObject(Parent, 60000) = 0;
+      CloseHandle(Parent);
+    end;
+  end;
+end;
+function RestartRequested(): Boolean;
+begin
+  Result := ExpandConstant('{param:TM3RESTART|0}') = '1';
+end;

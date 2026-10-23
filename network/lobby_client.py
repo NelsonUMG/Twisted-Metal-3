@@ -171,15 +171,15 @@ class Lobby:
 
     def build_ui(self):
         self.root.title(loc.tr("TM3 Online | Salas"))
-        self.root.geometry("1000x740")
-        self.root.minsize(840, 660)
+        self.root.geometry("820x600")
+        self.root.minsize(760, 560)
         self.root.configure(bg="#101722")
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TFrame", background="#101722")
-        style.configure("TLabel", background="#101722", foreground="#e4eaf4", font=("Segoe UI", 11))
-        style.configure("Title.TLabel", font=("Segoe UI", 24, "bold"), foreground="#69b7ff")
-        style.configure("TButton", font=("Segoe UI", 10), padding=(18, 11),
+        style.configure("TLabel", background="#101722", foreground="#e4eaf4", font=("Segoe UI", 10))
+        style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"), foreground="#69b7ff")
+        style.configure("TButton", font=("Segoe UI", 10), padding=(12, 6),
                         background="#263449", foreground="#eaf1ff", borderwidth=0, bordercolor="#263449")
         style.configure("Primary.TButton", background="#3979d3", foreground="#ffffff", font=("Segoe UI", 10, "bold"))
         style.map("Primary.TButton", background=[("active", "#4b8ce6"), ("disabled", "#263449")])
@@ -188,13 +188,13 @@ class Lobby:
         style.configure("Connection.TLabel", foreground="#a5c8ef", font=("Segoe UI", 10))
         style.configure("Detail.TLabel", foreground="#ffcf91", font=("Segoe UI", 10))
         style.configure("TEntry", fieldbackground="#1b2635", foreground="#ffffff", padding=6)
-        style.configure("Treeview", background="#182230", fieldbackground="#182230", foreground="#e4eaf4", rowheight=42, font=("Segoe UI", 10), borderwidth=0)
+        style.configure("Treeview", background="#182230", fieldbackground="#182230", foreground="#e4eaf4", rowheight=28, font=("Segoe UI", 10), borderwidth=0)
         style.layout("Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
         style.configure("Treeview.Heading", font=("Segoe UI", 11, "bold"),
-                        background="#223047", foreground="#a6bad5", padding=12, relief="flat", borderwidth=0)
+                        background="#223047", foreground="#a6bad5", padding=6, relief="flat", borderwidth=0)
         style.map("Treeview.Heading", background=[("active", "#3d5b7d")])
         style.map("Treeview", background=[("selected", "#285d8d")], foreground=[("selected", "#ffffff")])
-        frame = ttk.Frame(self.root, padding=28)
+        frame = ttk.Frame(self.root, padding=16)
         frame.pack(fill="both", expand=True)
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(4, weight=1)
@@ -214,13 +214,13 @@ class Lobby:
         self.instructions.grid(row=3, column=0, sticky="ew", pady=(0, 12))
         self.table = ttk.Treeview(frame, columns=("description", "host", "players", "state"), show="headings", selectmode="browse", height=4)
         for col, title, width in (("description", "Descripción de sala", 300), ("host", "Anfitrión", 160), ("players", "Jugadores", 100), ("state", "Estado", 140)):
-            self.table.heading(col, text=loc.tr(title))
-            self.table.column(col, width=width)
+            self.table.heading(col, text=loc.tr(title), anchor="center" if col == "players" else "w")
+            self.table.column(col, width=width, anchor="center" if col == "players" else "w", stretch=col == "description", minwidth=70)
         self.table.grid(row=4, column=0, sticky="nsew")
         self.table.bind("<Double-1>", lambda _: self.join())
         self.table.bind("<<TreeviewSelect>>", lambda _: self.update_join_button())
         buttons = ttk.Frame(frame)
-        buttons.grid(row=5, column=0, sticky="w", pady=14)
+        buttons.grid(row=5, column=0, sticky="w", pady=8)
         self.create_button = loc.Button(buttons, text="Crear sala", command=self.create_room, style="Primary.TButton")
         self.join_button = loc.Button(buttons, text="Unirse", command=self.join)
         for button in (self.create_button, self.join_button):
@@ -246,7 +246,6 @@ class Lobby:
             self.network_settings.grid(row=10, column=0, sticky="e", pady=(12, 0))
         self.export_button = loc.Button(frame, text='Guardar diagnóstico', command=self.export_diagnostics)
         self.export_button.grid(row=10, column=0, sticky='w', padx=(160, 0), pady=(12, 0))
-        ttk.Button(frame, text='Buscar actualizaciones', command=self.check_release_update).grid(row=11, column=0, sticky='w', pady=(8, 0))
         ttk.Button(frame, text='Importar archivos del juego', command=self.import_game_assets).grid(row=11, column=0, sticky='e', pady=(8, 0))
         def resize_text(event):
             for label in (self.instructions, self.members, self.status, self.latency_label, self.error_detail):
@@ -279,7 +278,8 @@ class Lobby:
             messagebox.showerror('Importar juego', str(exc), parent=self.root)
 
     def check_release_update(self, automatic=False):
-        if getattr(self, '_checking_release', False): return
+        if getattr(self, '_release_checked', False): return
+        self._release_checked = True
         self._checking_release = True
         def check():
             from release_updater import check_update
@@ -294,17 +294,10 @@ class Lobby:
         threading.Thread(target=check, daemon=True).start()
 
     def apply_release_update(self, update):
-        if ((self.process and self.process.poll() is None) or
-                (self.local_process and self.local_process.poll() is None) or self.room):
-            messagebox.showinfo('Actualizar', 'Sal de la sala y cierra la partida para actualizar.', parent=self.root)
-            return
-        if not messagebox.askyesno('Actualizar TM3 Online', f"Versión {update['version']} disponible. ¿Descargar e instalar?", parent=self.root): return
-        def download():
-            from release_updater import download_installer
-            try: self.events.put(('release_downloaded', str(download_installer(update, DATA/'updates'))))
-            except Exception as exc: self.events.put(('error', 'Actualización: ' + str(exc)))
-        self.status.configure(text='Descargando actualización…')
-        threading.Thread(target=download, daemon=True).start()
+        from update_window import UpdateWindow
+        self.update_cache = DATA/'updates'
+        self.install_root = ROOT
+        self.update_window = UpdateWindow(self, update)
 
     def change_language(self, event=None):
         loc.language = "es" if self.language_choice.get() == "Español" else "en"
@@ -696,15 +689,15 @@ class Lobby:
             window = self.room_window = tk.Toplevel(self.root)
             window.withdraw()
             window.title(f"TM3 Online | {room.get('description', 'Sala de ' + room['host'])}")
-            width, height = 820, 710
+            width, height = 680, 570
             self.root.update_idletasks()
             x = max(8, min(self.root.winfo_x() + 35, self.root.winfo_screenwidth() - width - 8))
             y = max(8, min(self.root.winfo_y() + 35, self.root.winfo_screenheight() - height - 55))
             window.geometry(f"{width}x{height}+{x}+{y}")
-            window.minsize(700, 650)
+            window.minsize(620, 530)
             window.configure(bg="#101722")
             window.protocol("WM_DELETE_WINDOW", self.leave_room)
-            frame = ttk.Frame(window, padding=22)
+            frame = ttk.Frame(window, padding=14)
             frame.pack(fill="both", expand=True)
             frame.columnconfigure(0, weight=1)
             frame.rowconfigure(7, weight=1)
@@ -715,8 +708,8 @@ class Lobby:
             self.room_role.grid(row=2, column=0, sticky="w", pady=(0, 14))
             self.room_players = ttk.Treeview(frame, columns=("seat", "name", "role"), show="headings", height=2, selectmode="none")
             for col, heading, width in (("seat", "Puesto", 70), ("name", "Jugador", 270), ("role", "Rol", 170)):
-                self.room_players.heading(col, text=loc.tr(heading))
-                self.room_players.column(col, width=width)
+                self.room_players.heading(col, text=loc.tr(heading), anchor="center" if col == "seat" else "w")
+                self.room_players.column(col, width=width, anchor="center" if col == "seat" else "w", stretch=col == "name", minwidth=60)
             self.room_players.grid(row=3, column=0, sticky="ew")
             self.room_status = loc.Label(frame, wraplength=570)
             self.room_status.grid(row=4, column=0, sticky="ew", pady=(10, 8))
@@ -739,7 +732,7 @@ class Lobby:
             compose = ttk.Frame(frame)
             compose.grid(row=8, column=0, sticky="ew", pady=(8, 12))
             compose.columnconfigure(0, weight=1)
-            self.chat_input = ttk.Entry(compose, font=("Segoe UI", 11))
+            self.chat_input = ttk.Entry(compose, font=("Segoe UI", 10))
             self.chat_input.grid(row=0, column=0, sticky="ew", padx=(0, 8))
             self.chat_input.bind("<Return>", lambda _: self.send_chat())
             self.chat_send = loc.Button(compose, text="Enviar", command=self.send_chat)
@@ -1200,13 +1193,12 @@ class Lobby:
                     update, automatic = data
                     if update: self.apply_release_update(update)
                     elif not automatic: messagebox.showinfo('TM3 Online', 'Ya tienes la última versión.', parent=self.root)
+                elif kind == 'release_progress':
+                    if getattr(self, 'update_window', None): self.update_window.progress(*data)
                 elif kind == 'release_downloaded':
-                    if self.room or (self.process and self.process.poll() is None) or (self.local_process and self.local_process.poll() is None):
-                        messagebox.showinfo('Actualizar', 'Descarga completa. Cierra la partida y vuelve a buscar actualizaciones.', parent=self.root)
-                    else:
-                        from release_updater import launch_installer
-                        launch_installer(data, ROOT)
-                        self.close()
+                    if getattr(self, 'update_window', None): self.update_window.ready(data)
+                elif kind == 'release_failed':
+                    if getattr(self, 'update_window', None): self.update_window.failed(data)
         except queue.Empty:
             pass
         if time.monotonic() >= self._next_latency_refresh:
@@ -1241,6 +1233,7 @@ class Lobby:
             self.status.configure(text="No hay salas creadas. Pulsa Crear sala para ser anfitrión." if not data["rooms"] else "Selecciona una sala disponible y pulsa Unirse. La lista se actualiza automáticamente.")
 
     def close(self):
+        if getattr(self, 'update_window', None): self.update_window.cancelled.set()
         self.stop.set()
         self.room_cancel.set()
         self.close_ice()

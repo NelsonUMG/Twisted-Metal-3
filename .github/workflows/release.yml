@@ -29,4 +29,4 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create $env:GITHUB_REF_NAME dist/TM3Online-Setup.exe dist/SHA256SUMS.txt --verify-tag --generate-notes
+        run: gh release create $env:GITHUB_REF_NAME dist/TM3Online-Setup.exe dist/SHA256SUMS.txt dist/update/* --verify-tag --generate-notes
