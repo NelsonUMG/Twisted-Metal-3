@@ -17,6 +17,7 @@ from collections import deque
 
 from twin_core import Core, VulkanFrontend
 from system256_peer_cable import PeerCable
+from ui_work import SoftwarePresentation
 
 
 class Link:
@@ -457,10 +458,17 @@ def run(args):
             last_presented_frame = -1
             fullscreen = False
             settings_stamp = None
+            settings_path = Path(args.settings)
+            next_settings_check = 0
+            presentation = SoftwarePresentation()
             while not stop.is_set():
                 if native_handle and native_ui.tm3ui_poll(native_handle) == 1:
                     capture_requested.set()
-                stamp = Path(args.settings).stat().st_mtime_ns
+                now = time.monotonic()
+                stamp = settings_stamp
+                if now >= next_settings_check:
+                    stamp = settings_path.stat().st_mtime_ns
+                    next_settings_check = now + .25
                 if stamp != settings_stamp:
                     updated = configparser.ConfigParser()
                     updated.read(args.settings, encoding='utf-8-sig')
@@ -470,7 +478,10 @@ def run(args):
                     core.vulkan_smooth = bool(option('Smooth'))
                     core.vulkan_preserve_aspect = option('Aspect') != 2
                 cable.check_role_timeout()
+                exposed = False
                 for event in pygame.event.get():
+                    if event.type == pygame.WINDOWEXPOSED:
+                        exposed = True
                     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                         stop.set()
                     elif event.type == pygame.WINDOWFOCUSLOST: focused.clear()
@@ -481,10 +492,11 @@ def run(args):
                             pygame.display.toggle_fullscreen()
                         else:
                             surface = pygame.display.set_mode((0, 0) if fullscreen else (960, 720), pygame.FULLSCREEN if fullscreen else pygame.RESIZABLE)
+                        exposed = True
                 if link.error or cable.error:
                     raise RuntimeError(link.error or cable.error)
                 video = core.video
-                if video:
+                if presentation.needed(video, surface.get_size(), option('Smooth'), exposed):
                     data, width, height, pitch, fmt = video
                     if fmt not in (1, 3, 4): raise RuntimeError('Formato de vídeo no compatible con este presentador.')
                     packed = data if pitch == width*4 else b''.join(data[y*pitch:y*pitch+width*4] for y in range(height))

@@ -256,6 +256,19 @@ class LayoutTest(unittest.TestCase):
         self.assertEqual(len(self.app.table.get_children()), 1)
         self.assertIn("Sala de Nelson", self.app.room_window.title())
 
+    def test_player_count_changes_only_affected_cells_and_keeps_selection(self):
+        self.render_room(self.room())
+        self.app.table.selection_set('qa-room')
+        with patch.object(self.app.table, 'delete') as delete, \
+             patch.object(self.app.table, 'insert') as insert, \
+             patch.object(self.app.table, 'set', wraps=self.app.table.set) as update:
+            self.render_room(self.room(players=['Nelson', 'Sofia']))
+        delete.assert_not_called()
+        insert.assert_not_called()
+        self.assertEqual({call.args[1] for call in update.call_args_list}, {'players', 'state'})
+        self.assertEqual(self.app.table.selection(), ('qa-room',))
+        self.assertEqual(self.app.table.set('qa-room', 'players'), '2/2')
+
     def test_join_opens_separate_guest_room(self):
         self.render_room(self.room(owner=False, players=["Nelson", "Sofia"]))
         self.assertIn("invitado", self.app.room_role.cget("text"))

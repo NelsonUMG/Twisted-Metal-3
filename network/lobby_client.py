@@ -27,6 +27,7 @@ from relay_protocol import loopback
 from urllib.parse import urlsplit
 import lobby_language as loc
 from privacy import public_text, public_diagnostic
+from ui_work import sync_tree
 from directory_defaults import PUBLIC_DIRECTORY_URL
 
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
@@ -732,12 +733,13 @@ class Lobby:
             if room.get("connection_mode") == "relay" else
             "Conexión automática entre las PC. El directorio no transmite la partida."
             if room.get('connection_mode') == 'ice' else "El lobby general sigue abierto para consultar todas las salas.")
-        self.room_players.delete(*self.room_players.get_children())
+        rows = []
         for seat in range(room["capacity"]):
             occupied = seat < count
             name = room["players"][seat] if occupied else loc.tr("Esperando jugador...")
             role = ("Anfitrión" if seat == 0 else "Invitado") if occupied else "Disponible"
-            self.room_players.insert("", "end", iid=str(seat), values=(seat + 1, name, loc.tr(role)))
+            rows.append((str(seat), (seat + 1, name, loc.tr(role))))
+        sync_tree(self.room_players, rows)
         can_start = room["owner"] and count == 2 and room["phase"] == "waiting" and not self.room_leaving
         self.start_button.configure(state="normal" if can_start else "disabled")
         if room["owner"]:
@@ -1183,14 +1185,12 @@ class Lobby:
 
     def render(self, data):
         self.visible_rooms = {room["id"]: room for room in data["rooms"]}
-        selected = self.table.selection()
-        self.table.delete(*self.table.get_children())
+        rows = []
         labels = {"waiting": "En espera", "connect": "Conectando PC", "prepare": "Preparando", "host": "Abriendo anfitrion", "client": "Abriendo invitado", "playing": "Partida iniciada"}
         for room in data["rooms"]:
             state = "Llena" if room["phase"] == "waiting" and len(room["players"]) == room["capacity"] else labels[room["phase"]]
-            self.table.insert("", "end", iid=room["id"], values=(room.get("description", "Sala de " + room["host"]), room["host"], f"{len(room['players'])}/{room['capacity']}", loc.tr(state)))
-        if selected and self.table.exists(selected[0]):
-            self.table.selection_set(selected[0])
+            rows.append((room['id'], (room.get("description", "Sala de " + room["host"]), room["host"], f"{len(room['players'])}/{room['capacity']}", loc.tr(state))))
+        sync_tree(self.table, rows)
         self.room = data["room"]
         self.local_button.configure(state="disabled" if self.room else "normal")
         self.create_button.configure(state="disabled" if self.room else "normal")
