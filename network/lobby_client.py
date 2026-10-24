@@ -26,6 +26,7 @@ from relay_client import RelayBridge
 from relay_protocol import loopback
 from urllib.parse import urlsplit
 import lobby_language as loc
+from privacy import public_text, public_diagnostic
 from directory_defaults import PUBLIC_DIRECTORY_URL
 
 ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
@@ -228,8 +229,6 @@ class Lobby:
             button.configure(state="disabled")
         self.local_button = loc.Button(buttons, text="Jugar local", command=self.play_local, style="Primary.TButton")
         self.local_button.pack(side="left", padx=(28, 0))
-        self.emulator_settings = loc.Button(buttons, text="Configurar emulador", command=self.configure_emulator)
-        self.emulator_settings.pack(side="left", padx=(9, 0))
         self.members = loc.Label(frame, text="Todavía no estás en una sala.", wraplength=820)
         self.members.grid(row=6, column=0, sticky="ew")
         self.status = loc.Label(frame, text="Buscando salas automáticamente...", wraplength=820)
@@ -246,36 +245,10 @@ class Lobby:
             self.network_settings.grid(row=10, column=0, sticky="e", pady=(12, 0))
         self.export_button = loc.Button(frame, text='Guardar diagnóstico', command=self.export_diagnostics)
         self.export_button.grid(row=10, column=0, sticky='w', padx=(160, 0), pady=(12, 0))
-        ttk.Button(frame, text='Importar archivos del juego', command=self.import_game_assets).grid(row=11, column=0, sticky='e', pady=(8, 0))
         def resize_text(event):
             for label in (self.instructions, self.members, self.status, self.latency_label, self.error_detail):
                 label.configure(wraplength=max(300, event.width - 44))
         frame.bind("<Configure>", resize_text)
-
-    def import_game_assets(self):
-        from tkinter import filedialog
-        import shutil
-        if self.process and self.process.poll() is None:
-            messagebox.showinfo('TM3 Online', 'Cierra la partida antes de importar.', parent=self.root)
-            return
-        folder = filedialog.askdirectory(title='Selecciona runtime/system256 de tu instalación anterior', parent=self.root)
-        if not folder: return
-        source = Path(folder)
-        target = ROOT / self.config.get('system256', {}).get('assets', 'runtime/system256')
-        try:
-            expected = json.loads((ROOT/'RELEASE_FILES.json').read_text(encoding='utf-8'))['system256']
-            names = ('TM3_SYSTEM256.bin', 'TM3_SYSTEM256.cue')
-            for name in names:
-                with (source/name).open('rb') as stream:
-                    digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-                if digest != expected[name]: raise ValueError('La versión del juego no coincide: ' + name)
-            target.mkdir(parents=True, exist_ok=True)
-            for name in names:
-                if (source/name).resolve() != (target/name).resolve():
-                    shutil.copy2(source/name, target/name)
-            messagebox.showinfo('TM3 Online', 'Archivos online importados.', parent=self.root)
-        except Exception as exc:
-            messagebox.showerror('Importar juego', str(exc), parent=self.root)
 
     def check_release_update(self, automatic=False):
         if getattr(self, '_release_checked', False): return
@@ -436,7 +409,7 @@ class Lobby:
             try:
                 name, _ = username(name)
             except ValueError as exc:
-                messagebox.showerror("Usuario", str(exc), parent=self.root)
+                messagebox.showerror("Usuario", public_text(exc), parent=self.root)
                 return
             self.profile = {"name": name, "secret": secrets.token_hex(32)}
         self.retry.configure(state="disabled")
@@ -450,7 +423,7 @@ class Lobby:
     def configure_directory(self):
         value = simpledialog.askstring(loc.tr("Conexión a Internet"),
             loc.tr("Dirección HTTPS del lobby público. Vacío para red local:"),
-            initialvalue=self.config.get("directory_url", ""), parent=self.root)
+            initialvalue="", parent=self.root)
         if value is None:
             return
         value = value.strip()
@@ -488,7 +461,7 @@ class Lobby:
         try:
             text = room_description(text)
         except ValueError as exc:
-            messagebox.showerror("Descripción de sala", str(exc), parent=self.root)
+            messagebox.showerror("Descripción de sala", public_text(exc), parent=self.root)
             return
         self.action("create", description=text)
 
@@ -572,7 +545,7 @@ class Lobby:
                     connection_mode=room.get('connection_mode'), last_error=self.last_error, ice=snapshot)
                 target = DATA / 'diagnostics' / ('rooms_' + str(time.time_ns()) + '.json')
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding='utf-8')
+                target.write_text(json.dumps(public_diagnostic(report), indent=2, ensure_ascii=False), encoding='utf-8')
                 self.events.put(('diagnostic_saved', str(target)))
             except Exception as exc:
                 self.events.put(('error', 'No se pudo guardar el diagnóstico: ' + type(exc).__name__))
@@ -1001,7 +974,7 @@ class Lobby:
             self.local_process = self.launch_game("lobby_local", [])
             self.status.configure(text="Juego local abierto. No necesita otra computadora ni una sala.")
         except Exception as exc:
-            messagebox.showerror("Juego local", str(exc), parent=self.root)
+            messagebox.showerror("Juego local", public_text(exc), parent=self.root)
 
     def advance(self, room):
         if not room or self.room_cancel.is_set():
@@ -1160,9 +1133,10 @@ class Lobby:
                 if kind == "connected":
                     self.identity.configure(text=f"Bienvenido, {self.profile['name']}")
                     configured = os.environ.get("TM3_LOBBY_URL") or self.config.get("directory_url")
-                    self.connection.configure(text="Conectado al directorio compartido" if configured else "Conectado al lobby de la red local")
+                    self.connection.configure(text="Conectado" if configured else "Conectado al lobby de la red local")
                     self.error_detail.configure(text='' if configured else 'Modo LAN: solo salas de esta red. El directorio de Internet todavía no está configurado.')
                 elif kind == "disconnected":
+                    data = public_text(data)
                     self.last_error = data
                     self.status.configure(text="No se pudo conectar al lobby. Pulsa Reconectar para volver a buscar.")
                     self.connection.configure(text="Sin conexión")
@@ -1179,6 +1153,7 @@ class Lobby:
                     else:
                         self.retry.configure(text="Reconectar")
                 elif kind == "error":
+                    data = public_text(data)
                     self.last_error = data
                     self.status.configure(text=data)
                     if self.room_window:
@@ -1262,7 +1237,7 @@ def main():
         Lobby(app)
         app.mainloop()
     except Exception as exc:
-        messagebox.showerror("TM3 Online", str(exc), parent=app)
+        messagebox.showerror("TM3 Online", public_text(exc), parent=app)
 
 
 if __name__ == "__main__":

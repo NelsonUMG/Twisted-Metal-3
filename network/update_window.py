@@ -2,6 +2,7 @@
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
+from privacy import public_text
 
 class UpdateWindow:
     def __init__(self, owner, update):
@@ -57,7 +58,7 @@ class UpdateWindow:
 
     def failed(self, error):
         if not self.window.winfo_exists(): return
-        self.status.configure(text='No se pudo descargar: ' + error, wraplength=440)
+        self.status.configure(text='No se pudo descargar: ' + public_text(error), wraplength=440)
         self.later.configure(text='Cerrar', command=self.window.destroy)
         self.window.deiconify()
 

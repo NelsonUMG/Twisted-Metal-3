@@ -1,6 +1,7 @@
 """English / Spanish UI strings. Player names, room descriptions and chat stay untouched."""
 import re
 from tkinter import ttk
+from privacy import public_text
 
 language = "en"
 WORDS = {
@@ -55,7 +56,7 @@ WORDS = {
     "Buscando el directorio y las salas...": "Finding the directory and rooms...", "Salir de la sala": "Leave room",
     "Cerrar sala": "Close room", "Saliendo de la sala...": "Leaving the room...", "Chat de la sala": "Room chat",
     "Enviar": "Send", "El lobby general sigue abierto para consultar todas las salas.": "The lobby stays open so you can browse other rooms.",
-    "Conectado al directorio compartido": "Connected to the shared directory", "Conectado al lobby de la red local": "Connected to your local network",
+    "Conectado": "Connected", "Conectado al lobby de la red local": "Connected to your local network",
     "No se pudo conectar al lobby. Pulsa Reconectar para volver a buscar.": "Couldn't connect. Select Reconnect to try again.",
     "Sin conexión": "Offline", "Elegir otro usuario": "Choose another player name", "En espera": "Waiting",
     "Preparando": "Preparing", "Abriendo anfitrion": "Starting host", "Abriendo invitado": "Starting guest",
@@ -85,6 +86,8 @@ WORDS = {
 }
 
 def tr(text):
+    if isinstance(text, str):
+        text = public_text(text)
     if language == "es" or not isinstance(text, str):
         return text
     if text in WORDS:
