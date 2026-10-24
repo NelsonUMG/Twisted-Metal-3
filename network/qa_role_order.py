@@ -87,6 +87,7 @@ def main():
         make_fixture(first_side, args.wait_frames, fixture, args.crossed)
         try:
             result = run(SimpleNamespace(output=str(case), assets=args.assets,
+                guest_assets=None,
                 settings=args.settings, fixture=str(fixture), frozen_exe=args.frozen_exe,
                 timeout=args.timeout))
             validation = validate(result, first_side, args.minimum_wait,

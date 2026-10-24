@@ -1,6 +1,6 @@
 {
   "runtime": {
-    "variant": "SYSTEM256 ABI6 + P2P cable + one console per PC + CPU175",
+    "variant": "SqrtMergeV4 + SYSTEM256 ABI6 + P2P cable + one console per PC + CPU175",
     "diagnostics": false,
     "executable": "runtime/TM3Online.exe",
     "core": "runtime/cores/beetle_psx_libretro.dll",

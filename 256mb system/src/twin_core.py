@@ -21,6 +21,20 @@ class Variable(C.Structure):
     _fields_ = [('key', C.c_char_p), ('value', C.c_char_p)]
 
 
+class Geometry(C.Structure):
+    _fields_ = [('base_width', C.c_uint), ('base_height', C.c_uint),
+                ('max_width', C.c_uint), ('max_height', C.c_uint),
+                ('aspect_ratio', C.c_float)]
+
+
+class Timing(C.Structure):
+    _fields_ = [('fps', C.c_double), ('sample_rate', C.c_double)]
+
+
+class AVInfo(C.Structure):
+    _fields_ = [('geometry', Geometry), ('timing', Timing)]
+
+
 class LocalCable:
     """Legacy helper to pair two local cores in compatibility tests.
 
@@ -284,6 +298,14 @@ class Core:
             self.close()
             raise RuntimeError('El core no pudo cargar el juego SYSTEM256.')
         self._game_loaded = True
+        # libretro requires this after load_game. Beetle's Vulkan backend also
+        # applies resolution and visible scanline options here, before creating
+        # its renderer. Skipping it left the startup scanout only 1-2 lines tall
+        # and Vulkan at its internal 4x fallback rather than the selected scale.
+        self.av_info = AVInfo()
+        self.dll.retro_get_system_av_info.argtypes = [C.POINTER(AVInfo)]
+        self.dll.retro_get_system_av_info.restype = None
+        self.dll.retro_get_system_av_info(C.byref(self.av_info))
         if self.vulkan_handle:
             if not self.hw_callback_ptr or not self.vulkan_negotiation_ptr:
                 self.close()

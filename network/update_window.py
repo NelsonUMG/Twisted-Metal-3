@@ -15,7 +15,7 @@ class UpdateWindow:
         self.window.transient(owner.root)
         frame = ttk.Frame(self.window, padding=18); frame.pack(fill='both', expand=True)
         ttk.Label(frame, text=f"Nueva versión {update['version']}", style='Title.TLabel').pack(anchor='w')
-        self.status = ttk.Label(frame, text='Comparando archivos de la instalación…'); self.status.pack(anchor='w', pady=(14,6))
+        self.status = ttk.Label(frame, text='Conectando para comparar los archivos de la actualización…'); self.status.pack(anchor='w', pady=(14,6))
         self.bar = ttk.Progressbar(frame, maximum=update.get('size',100)); self.bar.pack(fill='x')
         ttk.Label(frame, text='Se verifica SHA256 antes de instalar. Tus ajustes y partidas se conservan.', wraplength=440).pack(anchor='w', pady=10)
         self.file_log = tk.Text(frame, height=4, width=54, state='disabled', font=('Segoe UI',9))

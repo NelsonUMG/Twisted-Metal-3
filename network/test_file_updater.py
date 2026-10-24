@@ -69,6 +69,24 @@ class FileUpdateTests(unittest.TestCase):
             result=download_files(dict(version='v0.3.0',manifest={'manifest':True},assets=assets),self.root,self.base/'cache')
         self.assertEqual(result['files'],['network/module.py'])
         self.assertEqual(calls,[manifest['files'][-1]['sha256']])
+    def test_duplicate_content_is_fetched_once_for_multiple_paths(self):
+        first=self.item('docs/one.txt',b'shared content')
+        second=self.item('docs/two.txt',b'shared content')
+        manifest=self.manifest([first,second]);data={i['sha256']:Path(i['staged']).read_bytes() for i in manifest['files']}
+        assets={'tm3-'+i['sha256']:dict(sha256=i['sha256'],size=i['size'],url=i['sha256']) for i in manifest['files']}
+        manifest_file=self.stage/'manifest.json';manifest_file.write_text(json.dumps(manifest))
+        calls=[]
+        def download(asset,cache,progress=None,cancelled=None):
+            if asset.get('manifest'):return manifest_file
+            calls.append(asset['sha256']);cache=Path(cache);cache.mkdir(parents=True,exist_ok=True)
+            target=cache/'file';target.write_bytes(data[asset['sha256']]);return target
+        with patch('release_updater.download_installer',side_effect=download):
+            result=download_files(dict(version='v0.3.0',manifest={'manifest':True},assets=assets),self.root,self.base/'cache')
+        self.assertEqual(calls.count(first['sha256']),1)
+        self.assertEqual(result['files'],['TM3Lobby.exe','TM3Update.exe','VERSION','docs/one.txt','docs/two.txt'])
+        plan=json.loads(Path(result['plan']).read_text())
+        staged={i['path']:i['staged'] for i in plan['files']}
+        self.assertEqual(staged['docs/one.txt'],staged['docs/two.txt'])
 
 if __name__=='__main__':unittest.main()
 

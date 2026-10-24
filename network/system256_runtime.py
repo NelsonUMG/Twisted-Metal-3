@@ -119,15 +119,35 @@ def run(args):
         history.append(dict(timestamp=now, **value))
         while history and history[0]['timestamp'] < now - 120:
             history.popleft()
-        history_path.write_text('TM3 Online — últimos 120 segundos\n' +
-                               json.dumps(list(history), indent=2, ensure_ascii=False), encoding='utf-8-sig')
-        temporary = state_path.with_suffix('.tmp')
-        temporary.write_text(json.dumps(value), encoding='utf-8')
-        os.replace(temporary, state_path)
+        try:
+            history_path.write_text('TM3 Online — últimos 120 segundos\n' +
+                                   json.dumps(list(history), indent=2, ensure_ascii=False), encoding='utf-8-sig')
+        except OSError:
+            # Diagnostic logging must never stop a running console.
+            pass
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8',
+                    prefix=f'.{state_path.stem}.', suffix='.tmp',
+                    dir=state_path.parent, delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(json.dumps(value))
+            for attempt in range(6):
+                try:
+                    os.replace(temporary, state_path)
+                    temporary = None
+                    break
+                except PermissionError:
+                    if attempt == 5:
+                        raise
+                    time.sleep(.02 * (attempt + 1))
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
     status('starting')
     link = None; cores = []; threads = []; cable = None; temporary_owner = None
     vulkan_frontend = None; hardware_core = False; use_vulkan = False; video_adapter = None
-    native_ui = None; native_handle = None
+    native_ui = None; native_handle = None; native_tick = None
     capture_requested = threading.Event()
     stop = threading.Event(); errors = []; pcm = queue.Queue(64)
     audio_stats = {'pcm_generated_bytes': 0, 'pcm_queue_dropped_bytes': 0,
@@ -320,7 +340,7 @@ def run(args):
                 option_prefix = (b'beetle_psx_hw_' if selected_hardware_core
                                  else b'beetle_psx_')
                 selected_options = {
-                    option_prefix + b'internal_resolution': b'1x' if resolution == 1 else f'{resolution}x'.encode(),
+                    option_prefix + b'internal_resolution': b'1x(native)' if resolution == 1 else f'{resolution}x'.encode(),
                     option_prefix + b'pgxp_mode': b'memory only' if option('PGXP') else b'disabled',
                     option_prefix + b'widescreen_hack': b'enabled' if option('Widescreen') else b'disabled',
                     option_prefix + b'widescreen_hack_aspect_ratio': b'16:9'}
@@ -409,6 +429,8 @@ def run(args):
                 native_ui.tm3ui_attach.argtypes = [C.c_void_p, C.c_wchar_p, C.c_wchar_p, C.c_int]
                 native_ui.tm3ui_attach.restype = C.c_void_p
                 native_ui.tm3ui_poll.argtypes = [C.c_void_p]
+                native_ui.tm3ui_pump.argtypes = [C.c_void_p]
+                native_ui.tm3ui_pump.restype = None
                 native_ui.tm3ui_detach.argtypes = [C.c_void_p]
                 native_handle = native_ui.tm3ui_attach(window_handle, str(Path(args.settings).resolve().parent),
                     str((folder/'TM3_SYSTEM256.cue').resolve()), actual_backend == 'vulkan')
@@ -461,7 +483,44 @@ def run(args):
             settings_path = Path(args.settings)
             next_settings_check = 0
             presentation = SoftwarePresentation()
+            modal_ticks = 0
+            modal_presented = 0
+            def present_video(exposed=False):
+                nonlocal video_frames_presented, last_presented_frame
+                video = core.video
+                if presentation.needed(video, surface.get_size(), option('Smooth'), exposed):
+                    data, width, height, pitch, fmt = video
+                    if fmt not in (1, 3, 4): raise RuntimeError('Formato de vídeo no compatible con este presentador.')
+                    packed = data if pitch == width*4 else b''.join(data[y*pitch:y*pitch+width*4] for y in range(height))
+                    image = pygame.image.frombuffer(packed, (width, height), 'BGRA' if fmt in (1, 4) else 'RGBA')
+                    image.set_alpha(None)
+                    dw, dh = surface.get_size()
+                    scale = min(dw / 4, dh / 3); target = (int(scale*4), int(scale*3))
+                    image = (pygame.transform.smoothscale if option('Smooth') else pygame.transform.scale)(image, target)
+                    surface.fill((0,0,0)); surface.blit(image, ((dw-target[0])//2, (dh-target[1])//2))
+                    pygame.display.flip()
+                    current_frame = core.frame
+                    if current_frame > last_presented_frame:
+                        video_frames_presented += 1
+                        last_presented_frame = current_frame
+            def modal_frame(_context):
+                nonlocal modal_ticks, modal_presented
+                if stop.is_set(): return
+                try:
+                    modal_ticks += 1
+                    before = video_frames_presented
+                    present_video()
+                    modal_presented += video_frames_presented - before
+                except Exception as exc:
+                    errors.append(repr(exc)); stop.set()
+            if native_handle and actual_backend == 'software':
+                native_tick = C.CFUNCTYPE(None, C.c_void_p)(modal_frame)
+                native_ui.tm3ui_set_tick.argtypes = [C.c_void_p, type(native_tick), C.c_void_p]
+                native_ui.tm3ui_set_tick.restype = None
+                native_ui.tm3ui_set_tick(native_handle, native_tick, None)
             while not stop.is_set():
+                if native_handle:
+                    native_ui.tm3ui_pump(native_handle)
                 if native_handle and native_ui.tm3ui_poll(native_handle) == 1:
                     capture_requested.set()
                 now = time.monotonic()
@@ -479,7 +538,7 @@ def run(args):
                     core.vulkan_preserve_aspect = option('Aspect') != 2
                 cable.check_role_timeout()
                 exposed = False
-                for event in pygame.event.get():
+                for event in pygame.event.get(pump=not bool(native_handle)):
                     if event.type == pygame.WINDOWEXPOSED:
                         exposed = True
                     if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -495,22 +554,7 @@ def run(args):
                         exposed = True
                 if link.error or cable.error:
                     raise RuntimeError(link.error or cable.error)
-                video = core.video
-                if presentation.needed(video, surface.get_size(), option('Smooth'), exposed):
-                    data, width, height, pitch, fmt = video
-                    if fmt not in (1, 3, 4): raise RuntimeError('Formato de vídeo no compatible con este presentador.')
-                    packed = data if pitch == width*4 else b''.join(data[y*pitch:y*pitch+width*4] for y in range(height))
-                    image = pygame.image.frombuffer(packed, (width, height), 'BGRA' if fmt in (1, 4) else 'RGBA')
-                    image.set_alpha(None)
-                    dw, dh = surface.get_size()
-                    scale = min(dw / 4, dh / 3); target = (int(scale*4), int(scale*3))
-                    image = (pygame.transform.smoothscale if option('Smooth') else pygame.transform.scale)(image, target)
-                    surface.fill((0,0,0)); surface.blit(image, ((dw-target[0])//2, (dh-target[1])//2))
-                    pygame.display.flip()
-                    current_frame = core.frame
-                    if current_frame > last_presented_frame:
-                        video_frames_presented += 1
-                        last_presented_frame = current_frame
+                present_video(exposed)
                 if time.monotonic()-last_status > 1:
                     waits = sorted(cable.wait_ms)
                     status('connected', frames=core.frame,
@@ -555,6 +599,7 @@ def run(args):
                               pcm_generated_bytes=audio_report['pcm_generated_bytes'],
                               pcm_queue_dropped_bytes=audio_report['pcm_queue_dropped_bytes'],
                               pcm_stale_dropped_bytes=audio_report['pcm_stale_dropped_bytes'],
+                              modal_ui_ticks=modal_ticks, modal_video_frames=modal_presented,
                               video_frames_rendered=core.video_frames,
                               video_frames_presented=presented_frames,
                               internal_resolution=resolution,

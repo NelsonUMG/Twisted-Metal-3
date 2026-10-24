@@ -1,12 +1,14 @@
 """Per-file release updates and recoverable file replacement."""
 import hashlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 
 MANIFEST = 'TM3Online-update.json'
@@ -52,19 +54,67 @@ def changed_files(manifest, root):
 
 def download_files(update, root, cache, progress=None, cancelled=None):
     from release_updater import download_installer
-    from urllib.request import Request,urlopen
     manifest_asset=update['manifest']
+    if progress: progress(0,manifest_asset['size'],MANIFEST)
     manifest_path=download_installer(manifest_asset,Path(cache)/'manifest',cancelled=cancelled)
     manifest=json.loads(manifest_path.read_text(encoding='utf-8'))
     if manifest.get('version')!=update['version']: raise ValueError('Versión del manifiesto incorrecta')
-    changed=changed_files(manifest,root);total=sum(i['size'] for i in changed);done=0
+    changed=changed_files(manifest,root);total=sum(i['size'] for i in changed)
     stage=Path(cache)/('stage-'+update['version']);stage.mkdir(parents=True,exist_ok=True)
-    for item in changed:
-        digest=item['sha256'];asset=update['assets'].get('tm3-'+digest)
-        if not asset or asset['sha256']!=digest or asset['size']!=item['size']: raise ValueError('Asset no coincide con manifiesto')
-        if progress: progress(done,total,item['path'])
-        blob=download_installer(asset,stage/digest,lambda n,t: progress(done+n,total,item['path']) if progress else None,cancelled)
-        item['staged']=str(blob.resolve());done+=item['size']
+    groups={}
+    for item in changed: groups.setdefault(item['sha256'],[]).append(item)
+    for digest,items in groups.items():
+        asset=update['assets'].get('tm3-'+digest)
+        if not asset or asset['sha256']!=digest or any(asset['size']!=i['size'] for i in items):
+            raise ValueError('Asset no coincide con manifiesto')
+    progress_lock=threading.Lock();active={};completed_bytes=0
+    class Cancellation:
+        def __init__(self): self.aborted=threading.Event()
+        def is_set(self): return self.aborted.is_set() or bool(cancelled and cancelled.is_set())
+        def wait(self,timeout):
+            deadline=time.monotonic()+timeout
+            while not self.is_set():
+                remaining=deadline-time.monotonic()
+                if remaining<=0: return False
+                time.sleep(min(.1,remaining))
+            return True
+    cancel=Cancellation()
+    def fetch(digest,items):
+        nonlocal completed_bytes
+        item=items[0];asset=update['assets']['tm3-'+digest]
+        if progress:
+            with progress_lock:
+                active[digest]=0
+                progress(completed_bytes+sum(active.values()),total,item['path'])
+        def report(current,_size):
+            if progress:
+                with progress_lock:
+                    active[digest]=current
+                    progress(completed_bytes+sum(active.values()),total,item['path'])
+        blob=download_installer(asset,stage/digest,report if progress else None,cancel)
+        with progress_lock:
+            completed_bytes+=asset['size']
+            active.pop(digest,None)
+            if progress: progress(completed_bytes+sum(active.values()),total,item['path'])
+        return blob
+    futures={}
+    try:
+        with ThreadPoolExecutor(max_workers=min(4,len(groups) or 1),
+                                thread_name_prefix='tm3-update') as executor:
+            for digest,items in groups.items():
+                futures[executor.submit(fetch,digest,items)]=(digest,items)
+            try:
+                for future in as_completed(futures):
+                    digest,items=futures[future]
+                    blob=future.result()
+                    for item in items: item['staged']=str(blob.resolve())
+            except BaseException:
+                cancel.aborted.set()
+                for future in futures: future.cancel()
+                raise
+    except BaseException:
+        cancel.aborted.set()
+        raise
     # Always stage the tiny standalone helper, even when its installed version is unchanged.
     helper=next(i for i in manifest['files'] if i['path']=='TM3Update.exe')
     helper_item=next((i for i in changed if i['path']=='TM3Update.exe'),None)

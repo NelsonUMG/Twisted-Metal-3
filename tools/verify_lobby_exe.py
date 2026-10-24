@@ -25,7 +25,7 @@ def api(url, data=None):
         return json.load(reply)
 
 
-def verify(package):
+def verify(package, update_manifest=None):
     exe = package / "TM3Lobby.exe"
     result = dict(game_processes_launched=0, python_removed_from_child_path=True)
     environment = {**os.environ, "PATH": str(Path(os.environ["SystemRoot"]) / "System32")}
@@ -109,14 +109,23 @@ def verify(package):
             for child in (service, relay):
                 subprocess.run(["taskkill", "/PID", str(child.pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 child.wait(timeout=10)
-    manifest = json.loads((package / "BUILD_MANIFEST.json").read_text(encoding="utf-8-sig"))
-    for entry in manifest["files"]:
-        if entry['file'] == 'TM3Lobby.json':
+    manifest_path = Path(update_manifest) if update_manifest else package / 'TM3Online-update.json'
+    if not manifest_path.is_file():
+        manifest_path = package / 'BUILD_MANIFEST.json'
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+    if manifest.get('schema') == 1 and manifest.get('version'):
+        version = (package / 'VERSION').read_text(encoding='utf-8-sig').strip()
+        assert manifest['version'].lstrip('v') == version, 'Version no coincide con manifiesto'
+        entries = [(item['path'], item['sha256']) for item in manifest['files']]
+    else:
+        entries = [(item['file'], item['sha256']) for item in manifest['files']]
+    for filename, expected in entries:
+        if filename == 'TM3Lobby.json':
             continue  # The installed server URL/runtime settings are personal.
-        path = package / entry["file"]
+        path = package / filename
         with path.open("rb") as stream:
             actual = hashlib.file_digest(stream, "sha256").hexdigest()
-        assert actual.upper() == entry["sha256"], f"Hash no coincide: {path}"
+        assert actual.upper() == expected.upper(), f"Hash no coincide: {path}"
     result.update(manifest_verified=True, passed=True)
     return result
 
@@ -125,8 +134,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument('--update-manifest', type=Path)
     args = parser.parse_args()
-    result = verify(args.package.resolve())
+    result = verify(args.package.resolve(), args.update_manifest.resolve() if args.update_manifest else None)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2))
