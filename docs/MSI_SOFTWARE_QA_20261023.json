@@ -1,0 +1,26 @@
+{
+  "test": "MSI executable: automatic mixed Vulkan/software negotiation",
+  "passed": true,
+  "external_wan": false,
+  "renderers": [
+    "software",
+    "software"
+  ],
+  "ticks": [
+    600,
+    600
+  ],
+  "rates": [
+    29.940970903104525,
+    29.940503492105112
+  ],
+  "time_mismatches": [
+    0,
+    0
+  ],
+  "rng_mismatches": [
+    0,
+    0
+  ],
+  "external_bios": false
+}

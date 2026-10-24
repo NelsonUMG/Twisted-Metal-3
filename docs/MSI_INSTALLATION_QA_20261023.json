@@ -1,0 +1,54 @@
+{
+  "version": "0.2.1",
+  "msi": "TM3Online-0.2.1-x64-Completo.msi",
+  "size": 1313652736,
+  "sha256": "9ee81ad4323186e181782aa9ad4b895b3bbd89fa3c9fd03ae2633d35edb1d375",
+  "scope": "perUser",
+  "game_included": true,
+  "external_bios_included": false,
+  "default_firmware": "embedded OpenBIOS",
+  "initial": {
+    "msi_install_exit": 0,
+    "path_with_spaces": true,
+    "installed_files_verified": 69,
+    "startup_update_checks": 1,
+    "manual_second_check_blocked": true,
+    "installed_exe_ice_passed": true
+  },
+  "complete": {
+    "full_msi_install_exit": 0,
+    "upgrade_from_base": true,
+    "ini_preserved": true,
+    "save_preserved": true,
+    "game_files_verified": [
+      {
+        "path": "runtime\\game\\TM3_SQRT_MERGE_V4.bin",
+        "size": 711821040,
+        "sha256": "ebaf1eaa5d43ddfd3c88a860f0205482dede4ee20aebe5555b2d65b0a1bff14c"
+      },
+      {
+        "path": "runtime\\game\\TM3_SQRT_MERGE_V4.cue",
+        "size": 2771,
+        "sha256": "42f672b0a5859e651988fcdcdd103ba315fd137be31826e58ef347a21731d374"
+      },
+      {
+        "path": "runtime\\system256\\TM3_SYSTEM256.bin",
+        "size": 711821040,
+        "sha256": "c86f5e4118a3555fd3347b8aa6eaf5cea1f2680326ccf7d17afa175a319dfcab"
+      },
+      {
+        "path": "runtime\\system256\\TM3_SYSTEM256.cue",
+        "size": 2767,
+        "sha256": "a7b7fdaef2366d41b74e3aa50c8faa8ba71da21e7e2db4c266cf9e1a72677639"
+      }
+    ],
+    "installed_runtime_ok": true
+  },
+  "uninstall": {
+    "exit": 0,
+    "exe_removed": true,
+    "ini_preserved": true,
+    "save_preserved": true
+  },
+  "external_pc_and_wan_pending": true
+}

@@ -102,7 +102,7 @@ def run(args):
         generation = 1
         bridges = [EngineBridge(host, generation), EngineBridge(guest, generation)]
         for side in (0, 1):
-            runtimes.append(start_runtime(side, bridges[side], Path(args.assets).resolve(),
+            runtimes.append(start_runtime(side, bridges[side], Path(args.guest_assets if side == 1 and args.guest_assets else args.assets).resolve(),
                 Path(args.settings).resolve(), Path(args.fixture).resolve(), output,
                 Path(args.frozen_exe).resolve() if args.frozen_exe else None))
         wait_for_runtimes(runtimes, args.timeout)
@@ -144,6 +144,7 @@ def run(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--assets', default=str(DEFAULT_ASSETS))
+    parser.add_argument('--guest-assets', help='Alternate assets for a mixed Vulkan/software test.')
     parser.add_argument('--settings', default=str(DEFAULT_SETTINGS))
     parser.add_argument('--fixture', default=str(DEFAULT_FIXTURE))
     parser.add_argument('--output')
