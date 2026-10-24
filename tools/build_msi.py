@@ -18,7 +18,7 @@ def main():
  if not (native/'CMakeCache.txt').exists():
   subprocess.run([str(args.cmake),'-S',str(ROOT/'installer/native'),'-B',str(native),'-G','Visual Studio 18 2026','-A','x64'],check=True)
   subprocess.run([str(args.cmake),'--build',str(native),'--config','Release'],check=True)
- output=args.output or ROOT/f'dist/TM3Online-{args.version}-x64{"-Completo" if args.include_game else ""}.msi';output.parent.mkdir(parents=True,exist_ok=True)
+ output=args.output or ROOT.parent/f'TM3Online-{args.version}-x64{"-Completo" if args.include_game else ""}.msi';output.parent.mkdir(parents=True,exist_ok=True)
  wix=ET.Element('{'+NS+'}Wix');package=element(wix,'Package',Name='TM3 Online',Manufacturer='NelsonUMG',Version=args.version,UpgradeCode='DC41DB35-71C6-4CCD-BBFA-10B3240C7E62',Scope='perUser',Language='3082',Codepage='1252')
  element(package,'Binary',Id='ModernFolderPicker',SourceFile=str(native/'Release/TM3InstallerUI.dll'))
  element(package,'CustomAction',Id='PickInstallFolder',BinaryRef='ModernFolderPicker',DllEntry='PickInstallFolder',Execute='immediate',Return='check')
@@ -67,7 +67,7 @@ def main():
  license_file=work/'license.rtf';license_file.write_text('{\\rtf1\\ansi '+escaped+'}',encoding='ascii',errors='replace')
  element(package,'WixVariable',Id='WixUILicenseRtf',Value=str(license_file))
  source=work/'TM3Online.wxs';ET.ElementTree(wix).write(source,encoding='utf-8',xml_declaration=True)
- subprocess.run([str(args.wix.resolve()),'build',str(source),'-arch','x64','-ext','WixToolset.UI.wixext','-culture','es-es','-cc',str(work/'cabcache'),'-o',str(output.resolve())],check=True)
+ subprocess.run([str(args.wix.resolve()),'build',str(source),'-arch','x64','-pdb',str(work/'TM3Online.wixpdb'),'-ext','WixToolset.UI.wixext','-culture','es-es','-cc',str(work/'cabcache'),'-o',str(output.resolve())],check=True)
  subprocess.run(['powershell.exe','-NoProfile','-File',str(ROOT/'tools/patch_msi_picker.ps1'),'-Msi',str(output.resolve())],check=True)
  print(output)
 if __name__=='__main__':main()

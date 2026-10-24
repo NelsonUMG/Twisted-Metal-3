@@ -28,6 +28,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $releaseAssets = @(Get-ChildItem -LiteralPath dist/update -File | Select-Object -ExpandProperty FullName)
+          $manifest = Get-Content -LiteralPath dist/update/TM3Online-update.json -Raw | ConvertFrom-Json
+          $assetNames = @('TM3Online-update.json') + @($manifest.files | ForEach-Object { 'tm3-' + $_.sha256 } | Sort-Object -Unique)
+          $releaseAssets = @($assetNames | ForEach-Object { Join-Path (Resolve-Path dist/update).Path $_ })
           gh release create $env:GITHUB_REF_NAME @releaseAssets --verify-tag --generate-notes
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

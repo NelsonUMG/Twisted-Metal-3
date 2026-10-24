@@ -52,3 +52,9 @@ runtime/
 !/TM3Lobby.json
 /userdata/
 
+
+# Local installer deliverables never belong in Git.
+*.msi
+*.msi.sha256
+*.wixpdb
+*.wixobj
