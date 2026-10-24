@@ -2,11 +2,19 @@ name: Publish Windows file updates
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish or verify
+        required: true
+        type: string
 permissions:
   contents: write
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -15,15 +23,22 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
-          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and VERSION differ' }
+          if ($env:RELEASE_TAG -ne "v$version") { throw 'Tag and VERSION differ' }
       - name: Tests
         env:
           PYTHONPATH: network
         run: ./.python/python.exe -m unittest discover -s network -p 'test_*.py'
+      - name: Check existing publication
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./.python/python.exe tools/check_published_release.py
       - name: Build verified file-update assets
+        if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         run: ./.python/python.exe tools/build_installer.py --runtime runtime --stage-only
       - name: Publish
+        if: steps.existing.outputs.exists != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -31,5 +46,5 @@ jobs:
           $manifest = Get-Content -LiteralPath dist/update/TM3Online-update.json -Raw | ConvertFrom-Json
           $assetNames = @('TM3Online-update.json') + @($manifest.files | ForEach-Object { 'tm3-' + $_.sha256 } | Sort-Object -Unique)
           $releaseAssets = @($assetNames | ForEach-Object { Join-Path (Resolve-Path dist/update).Path $_ })
-          gh release create $env:GITHUB_REF_NAME @releaseAssets --verify-tag --generate-notes
+          gh release create $env:RELEASE_TAG @releaseAssets --verify-tag --generate-notes
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
