@@ -14,7 +14,7 @@ def build(payload, output, version):
     for path in sorted(payload.rglob('*')):
         if not path.is_file():continue
         name=path.relative_to(payload).as_posix()
-        if path.suffix.lower() in ('.msi','.msp','.msm','.wixpdb','.wixobj','.wixlib') or path.name.casefold() == 'tm3online-setup.exe':
+        if path.suffix.lower() in ('.msi','.msp','.msm','.wixpdb','.wixobj','.wixlib') or path.name.casefold().endswith('setup.exe'):
             raise ValueError('Los instaladores son locales, no archivos de actualización: '+name)
         item=dict(path=name,size=path.stat().st_size,sha256=sha(path))
         manifest['files'].append(item)

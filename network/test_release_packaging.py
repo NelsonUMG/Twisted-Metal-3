@@ -21,7 +21,7 @@ class ReleasePackagingTests(unittest.TestCase):
             self.assertEqual(len(manifest['files']),3)
             self.assertTrue((output/'TM3Online-update.json').is_file())
     def test_installers_and_installer_debug_files_are_rejected(self):
-        for name in ('setup.msi','installer.MSI','setup.msp','data.msm','build.wixpdb','build.wixobj','build.wixlib','TM3Online-Setup.exe'):
+        for name in ('setup.msi','installer.MSI','setup.msp','data.msm','build.wixpdb','build.wixobj','build.wixlib','TM3Online-Setup.exe','TM3Online-0.2.1-Setup.exe'):
             with self.subTest(name=name),tempfile.TemporaryDirectory() as folder:
                 payload=self.payload(folder);(payload/name).write_bytes(b'not an application update')
                 output=Path(folder)/'release'

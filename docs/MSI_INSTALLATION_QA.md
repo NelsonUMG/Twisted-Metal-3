@@ -1,5 +1,9 @@
 # Instalador MSI para prueba en otra PC
 
+La entrega actual es `../TM3Online-0.2.1-Setup.exe`: al abrir permite elegir Español o English. Contiene un único MSI completo y una transformación inglesa de su interfaz; no cambia el idioma del lobby ni del emulador. El selector clásico de carpetas también traduce su indicación. El Setup y su checksum permanecen fuera del checkout y no se publican en GitHub ni en el canal de actualizaciones.
+
+Para reconstruir la entrega bilingüe, generar `build/msi/TM3Online-es.msi` y `build/msi/TM3Online-en.msi` usando `tools/build_msi.py --include-game --culture es-es|en-us --output ...`, generar `build/msi/English.mst` con `wix msi transform -t language` desde el MSI español al inglés, y ejecutar `.python/python.exe tools/build_setup.py`. Ambos MSI comparten ProductCode; la transformación sólo localiza el instalador. QA: extracción real del Setup en ambos idiomas con SHA256 correcto, ProductLanguage 3082/1033, botones &Siguiente/&Next y tabla File idéntica antes/después de aplicar la transformación. Pruebas del selector de carpetas y exclusión de instaladores del actualizador aprobadas. La automatización visual de msiexec permanece bloqueada por la política del controlador; estos resultados verifican extracción y tablas del paquete.
+
 Construcción local con WiX 6.0.2, .NET SDK y extensión WixToolset.UI.wixext 6.0.2. El usuario final no necesita Python, .NET SDK ni WiX: TM3Lobby.exe y TM3Update.exe son ejecutables congelados.
 
 ```powershell

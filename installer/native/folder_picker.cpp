@@ -36,13 +36,13 @@ int CALLBACK browseCallback(HWND dialog,UINT message,LPARAM selection,LPARAM){
  }
  return 0;
 }
-std::wstring choose(HWND owner){
+std::wstring choose(HWND owner,bool english){
  HRESULT initialized=CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
  wchar_t display[MAX_PATH]{};BROWSEINFOW browse{};
  browse.hwndOwner=owner;
  // NULL is the virtual Desktop root, with an expandable shell folder tree.
  browse.pidlRoot=nullptr; browse.pszDisplayName=display;
- browse.lpszTitle=L"Selecciona una carpeta. Se creará TM3Online dentro de ella.";
+ browse.lpszTitle=english?L"Select a folder. TM3Online will be created inside it.":L"Selecciona una carpeta. Se creará TM3Online dentro de ella.";
  browse.ulFlags=BIF_RETURNONLYFSDIRS; // Compact classic tree, not Explorer or a list of locations.
  browse.lpfn=browseCallback;
  PIDLIST_ABSOLUTE selected=SHBrowseForFolderW(&browse);
@@ -58,7 +58,7 @@ UINT copyResult(const std::wstring& path,wchar_t* output,UINT capacity){
 }
 }
 extern "C" __declspec(dllexport) UINT __stdcall PickInstallFolder(MSIHANDLE install){
- try{auto result=choose(GetForegroundWindow());return result.empty()?ERROR_SUCCESS:MsiSetPropertyW(install,L"INSTALLFOLDER",result.c_str());}
+ try{wchar_t language[16]{};DWORD size=16;MsiGetPropertyW(install,L"ProductLanguage",language,&size);auto result=choose(GetForegroundWindow(),wcscmp(language,L"1033")==0);return result.empty()?ERROR_SUCCESS:MsiSetPropertyW(install,L"INSTALLFOLDER",result.c_str());}
  catch(...){return ERROR_INSTALL_FAILURE;}
 }
 extern "C" __declspec(dllexport) UINT __stdcall ResolveInstallLocation(int index,wchar_t* output,UINT capacity){return copyResult(knownDestination(index),output,capacity);}
