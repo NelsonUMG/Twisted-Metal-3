@@ -11,10 +11,17 @@ ET.register_namespace('',NS);ET.register_namespace('ui',UI)
 def element(parent,tag,**attrs):return ET.SubElement(parent,'{'+NS+'}'+tag,{k:str(v) for k,v in attrs.items()})
 def identifier(prefix,value):return prefix+hashlib.sha256(value.encode()).hexdigest()[:24]
 def main():
- p=argparse.ArgumentParser();p.add_argument('--wix',type=Path,default=ROOT/'build/toolchain/wix/wix.exe');p.add_argument('--version',default=(ROOT/'VERSION').read_text().strip());p.add_argument('--output',type=Path);p.add_argument('--include-game',action='store_true');args=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--wix',type=Path,default=ROOT/'build/toolchain/wix/wix.exe');p.add_argument('--version',default=(ROOT/'VERSION').read_text().strip());p.add_argument('--output',type=Path);p.add_argument('--include-game',action='store_true');p.add_argument('--cmake',type=Path,default=Path(r'C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'));args=p.parse_args()
  payload=ROOT/'build/payload';work=ROOT/'build/msi';work.mkdir(parents=True,exist_ok=True)
+ native=ROOT/'build/installer-native'
+ subprocess.run([str(args.cmake),'--build',str(native),'--config','Release'],check=True) if (native/'CMakeCache.txt').exists() else None
+ if not (native/'CMakeCache.txt').exists():
+  subprocess.run([str(args.cmake),'-S',str(ROOT/'installer/native'),'-B',str(native),'-G','Visual Studio 18 2026','-A','x64'],check=True)
+  subprocess.run([str(args.cmake),'--build',str(native),'--config','Release'],check=True)
  output=args.output or ROOT/f'dist/TM3Online-{args.version}-x64{"-Completo" if args.include_game else ""}.msi';output.parent.mkdir(parents=True,exist_ok=True)
  wix=ET.Element('{'+NS+'}Wix');package=element(wix,'Package',Name='TM3 Online',Manufacturer='NelsonUMG',Version=args.version,UpgradeCode='DC41DB35-71C6-4CCD-BBFA-10B3240C7E62',Scope='perUser',Language='3082',Codepage='1252')
+ element(package,'Binary',Id='ModernFolderPicker',SourceFile=str(native/'Release/TM3InstallerUI.dll'))
+ element(package,'CustomAction',Id='PickInstallFolder',BinaryRef='ModernFolderPicker',DllEntry='PickInstallFolder',Execute='immediate',Return='check')
  element(package,'MajorUpgrade',AllowSameVersionUpgrades='yes',DowngradeErrorMessage='Ya hay una versión más reciente instalada.')
  element(package,'MediaTemplate',EmbedCab='yes',CompressionLevel='medium')
  remembered=element(package,'Property',Id='INSTALLFOLDER',Secure='yes')
@@ -61,5 +68,6 @@ def main():
  element(package,'WixVariable',Id='WixUILicenseRtf',Value=str(license_file))
  source=work/'TM3Online.wxs';ET.ElementTree(wix).write(source,encoding='utf-8',xml_declaration=True)
  subprocess.run([str(args.wix.resolve()),'build',str(source),'-arch','x64','-ext','WixToolset.UI.wixext','-culture','es-es','-cc',str(work/'cabcache'),'-o',str(output.resolve())],check=True)
+ subprocess.run(['powershell.exe','-NoProfile','-File',str(ROOT/'tools/patch_msi_picker.ps1'),'-Msi',str(output.resolve())],check=True)
  print(output)
 if __name__=='__main__':main()
