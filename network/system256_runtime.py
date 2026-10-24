@@ -17,6 +17,7 @@ from collections import deque
 
 from twin_core import Core, VulkanFrontend
 from system256_peer_cable import PeerCable
+from system256_menu_sync import MenuReturnSync
 from ui_work import SoftwarePresentation
 
 
@@ -314,8 +315,26 @@ def run(args):
                 if time.monotonic() > deadline: raise TimeoutError('El otro lobby no confirmó SYSTEM256.')
         temporary_owner = tempfile.TemporaryDirectory(prefix='tm3_system256_', ignore_cleanup_errors=True)
         temporary = temporary_owner.name
-        cable = PeerCable(args.side, args.epoch, link.send_cable)
+        qa_delayed_phases = set()
+        def send_cable_packet(packet):
+            if qa_recording and args.side == 1 and len(packet) >= 4:
+                phase = None
+                delay_ms = 0
+                if packet[:4] == b'T3R1':
+                    phase = 'online_mode'
+                    delay_ms = args.qa_delay_online_ms
+                elif packet[:4] == b'T3C1' and len(packet) >= 36:
+                    call = struct.unpack_from('!4sQBBHIIIII', packet)[7]
+                    if call in (0x80047EA0, 0x80047EB8):
+                        phase = 'vehicle_selection'
+                        delay_ms = args.qa_delay_vehicle_ms
+                if phase and delay_ms and phase not in qa_delayed_phases:
+                    qa_delayed_phases.add(phase)
+                    time.sleep(delay_ms / 1000)
+            link.send_cable(packet)
+        cable = PeerCable(args.side, args.epoch, send_cable_packet)
         link.cable = cable
+        menu_sync = MenuReturnSync()
         if True:
             recording = qa_recording[args.side] if qa_recording else None
             qa_input_events = deque(maxlen=256)
@@ -323,6 +342,10 @@ def run(args):
             def local_inputs(_role, frame):
                 packed = (recording[frame] if recording and frame < len(recording)
                           else 0 if recording else sample(frame))
+                if cores:
+                    packed = menu_sync.local_input(
+                        packed, frame, cores[0].word(0x89a0c),
+                        cable.role_agreed, cable.match_active)
                 if qa_recording and packed != qa_last_input[0] and cores and not cable.gameplay:
                     qa_input_events.append(dict(frame=frame, monotonic=time.monotonic(),
                                                 mask=packed, menu=hex(cores[0].word(0x89a0c))))
@@ -431,6 +454,10 @@ def run(args):
                 native_ui.tm3ui_poll.argtypes = [C.c_void_p]
                 native_ui.tm3ui_pump.argtypes = [C.c_void_p]
                 native_ui.tm3ui_pump.restype = None
+                native_waiting = getattr(native_ui, 'tm3ui_set_waiting', None)
+                if native_waiting:
+                    native_waiting.argtypes = [C.c_void_p, C.c_int]
+                    native_waiting.restype = None
                 native_ui.tm3ui_detach.argtypes = [C.c_void_p]
                 native_handle = native_ui.tm3ui_attach(window_handle, str(Path(args.settings).resolve().parent),
                     str((folder/'TM3_SYSTEM256.cue').resolve()), actual_backend == 'vulkan')
@@ -447,7 +474,7 @@ def run(args):
                     stop.set()
             cable.observer = observe
             def execute(core):
-                main_menu = 0x8007FFE8
+                main_menu = MenuReturnSync.MAIN_MENU
                 was_main_menu = False
                 try:
                     while not stop.is_set() and not cable.stopped:
@@ -460,7 +487,7 @@ def run(args):
                         if args.qa_screenshot and core.transitions and core.transitions[-1]['frame'] == core.frame:
                             core.screenshot(str(Path(args.qa_screenshot).with_name(f'menu{args.side}_{core.frame}.bmp')))
                         is_main_menu = core.word(0x89a0c) == main_menu
-                        if is_main_menu and not was_main_menu and cable.gameplay:
+                        if is_main_menu and not was_main_menu and cable.role_agreed:
                             cable.reset_role_cycle()
                         was_main_menu = is_main_menu
                         wait = start + core.frame / 59.94 - time.perf_counter()
@@ -474,7 +501,13 @@ def run(args):
                    video_adapter=video_adapter, local_core_count=len(cores))
             renderer_label = ('Vulkan' + (f' — {video_adapter}' if video_adapter else '')
                               if actual_backend == 'vulkan' else 'Software')
-            pygame.display.set_caption(f'TM3 Online — SYSTEM256 — {renderer_label} — Esc: volver al lobby')
+            base_caption = f'TM3 Online — SYSTEM256 — {renderer_label} — Esc: volver al lobby'
+            waiting_label = ('Esperando a la otra consola' if option('Language') == 1
+                             else 'Waiting for other console')
+            returning_label = ('Volviendo al menú principal' if option('Language') == 1
+                               else 'Returning to main menu')
+            displayed_caption = base_caption
+            pygame.display.set_caption(base_caption)
             clock = pygame.time.Clock(); last_status = time.monotonic()
             video_frames_presented = 0
             last_presented_frame = -1
@@ -485,6 +518,11 @@ def run(args):
             presentation = SoftwarePresentation()
             modal_ticks = 0
             modal_presented = 0
+            displayed_wait_phase = None
+            displayed_waiting_overlay = False
+            wait_screenshots = {}
+            pygame.font.init()
+            waiting_font = pygame.font.SysFont('Arial', 18, bold=True)
             def present_video(exposed=False):
                 nonlocal video_frames_presented, last_presented_frame
                 video = core.video
@@ -498,6 +536,16 @@ def run(args):
                     scale = min(dw / 4, dh / 3); target = (int(scale*4), int(scale*3))
                     image = (pygame.transform.smoothscale if option('Smooth') else pygame.transform.scale)(image, target)
                     surface.fill((0,0,0)); surface.blit(image, ((dw-target[0])//2, (dh-target[1])//2))
+                    if displayed_waiting_overlay:
+                        message = waiting_font.render('WAITING FOR OTHER CONSOLE', True, (255, 255, 255))
+                        padding_x, padding_y = 12, 6
+                        panel = pygame.Surface((message.get_width()+padding_x*2,
+                                                message.get_height()+padding_y*2), pygame.SRCALPHA)
+                        panel.fill((5, 8, 14, 220))
+                        x = (dw-panel.get_width())//2
+                        y = int(dh*.46-panel.get_height()/2)
+                        surface.blit(panel, (x, y))
+                        surface.blit(message, (x+padding_x, y+padding_y))
                     pygame.display.flip()
                     current_frame = core.frame
                     if current_frame > last_presented_frame:
@@ -523,6 +571,41 @@ def run(args):
                     native_ui.tm3ui_pump(native_handle)
                 if native_handle and native_ui.tm3ui_poll(native_handle) == 1:
                     capture_requested.set()
+                if menu_sync.consume_broadcast():
+                    link.send(b'M' + json.dumps({'action': MenuReturnSync.ACTION}).encode())
+                while True:
+                    try:
+                        control = link.messages.get_nowait()
+                    except queue.Empty:
+                        break
+                    if isinstance(control, dict) and control.get('action') == MenuReturnSync.ACTION:
+                        menu_sync.request_remote_return()
+                cable_wait = cable.waiting_snapshot()
+                wait_phase = (cable_wait['phase'] if cable_wait and cable_wait['seconds'] >= .5
+                              else None)
+                if wait_phase != displayed_wait_phase:
+                    displayed_wait_phase = wait_phase
+                    displayed_waiting_overlay = wait_phase == 'vehicle_selection'
+                    if native_handle and native_waiting:
+                        native_waiting(native_handle, int(displayed_waiting_overlay))
+                if (qa_recording and args.qa_screenshot and wait_phase
+                        and wait_phase not in wait_screenshots):
+                    # Force composition while the emulated menu is waiting;
+                    # the game framebuffer is frozen between callback pumps.
+                    present_video(exposed=True)
+                    wait_capture = Path(args.qa_screenshot).with_name(
+                        f'waiting_{wait_phase}{args.side}.bmp')
+                    pygame.image.save(surface, str(wait_capture))
+                    wait_screenshots[wait_phase] = str(wait_capture)
+                if menu_sync.active:
+                    next_caption = f'{base_caption} — {returning_label}'
+                elif cable_wait and cable_wait['seconds'] >= 1.0:
+                    next_caption = f'{base_caption} — {waiting_label}'
+                else:
+                    next_caption = base_caption
+                if next_caption != displayed_caption:
+                    pygame.display.set_caption(next_caption)
+                    displayed_caption = next_caption
                 now = time.monotonic()
                 stamp = settings_stamp
                 if now >= next_settings_check:
@@ -562,9 +645,20 @@ def run(args):
                            rng_mismatches=cable.rng_mismatches, audio_error=core.audio_error,
                            cable_exchanges=cable.exchanges, cable_bytes_sent=cable.bytes_sent,
                            cable_bytes_received=cable.bytes_received,
+                           cable_waiting_for_peer=bool(cable_wait),
+                           cable_wait_phase=(cable_wait['phase'] if cable_wait else None),
+                           cable_wait_call=(f"0x{cable_wait['call']:08X}"
+                                            if cable_wait and cable_wait['call'] is not None else None),
+                           cable_wait_seconds=(round(cable_wait['seconds'], 2) if cable_wait else 0),
                            cable_wait_ms_p95=(waits[int((len(waits)-1)*.95)] if waits else None),
                            video_backend=actual_backend, video_adapter=video_adapter,
                            local_core_count=len(cores),
+                           game_menu=(hex(core.word(0x89a0c)) if core else None),
+                           game_input_calls=core.input_calls,
+                           game_pressed_calls=core.pressed_calls,
+                           role_waiting=cable.role_pending is not None,
+                           role_agreed=cable.role_agreed,
+                           role_round=cable.role_round,
                            video_frames_rendered=core.video_frames,
                            video_frames_presented=(core.video_frames_presented
                                                    if actual_backend == 'vulkan' else video_frames_presented),
@@ -607,6 +701,7 @@ def run(args):
                               video_backend=actual_backend,
                               video_adapter=video_adapter,
                               role_events=list(cable.role_events),
+                              wait_screenshots=wait_screenshots,
                               menu_transitions=list(core.transitions),
                               input_events=list(qa_input_events),
                               rate=(qa_times[-1][1]-qa_times[0][1])/(qa_times[-1][0]-qa_times[0][0]) if len(qa_times)==2 else 0)
@@ -654,9 +749,15 @@ def main():
     parser.add_argument('--qa-resolution', type=int, choices=(1, 2, 4), default=0,
                         help='Test-only internal render scale override, enabled only with --qa-fixture.')
     parser.add_argument('--qa-gameplay-ticks', type=int, default=600)
+    parser.add_argument('--qa-delay-online-ms', type=int, default=0,
+                        help='Test-only P2P delay for the first role response.')
+    parser.add_argument('--qa-delay-vehicle-ms', type=int, default=0,
+                        help='Test-only P2P delay for the first vehicle-select transfer.')
     args = parser.parse_args()
     if args.qa_resolution and not args.qa_fixture:
         parser.error('--qa-resolution requires --qa-fixture')
+    if (args.qa_delay_online_ms or args.qa_delay_vehicle_ms) and not args.qa_fixture:
+        parser.error('QA cable delays require --qa-fixture')
     if args.qa_gameplay_ticks < 1 or args.qa_gameplay_ticks > 100000:
         parser.error('--qa-gameplay-ticks must be between 1 and 100000')
     os.environ.update(TM3O_STANDARD_PS1='0', TM3O_DIAGNOSTICS='0')

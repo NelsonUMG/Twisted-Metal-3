@@ -38,6 +38,46 @@ def batch_mailbox(parts, recv_sizes, call=0x8003AA98):
 
 
 class PeerCableTests(unittest.TestCase):
+    def test_serial_exchange_wait_has_no_deadline_while_transport_is_alive(self):
+        cables = self.pair(timeout=None)
+        ram0, address0 = mailbox(call=0x80047EA0)
+        ram1, address1 = mailbox(call=0x80047EA0)
+        worker = threading.Thread(target=lambda: cables[0].exchange(0, address0, 256 * 1024 * 1024))
+        worker.start()
+        deadline = time.monotonic() + 1.2
+        snapshot = None
+        while time.monotonic() < deadline:
+            snapshot = cables[0].waiting_snapshot()
+            if snapshot and snapshot['seconds'] > 1:
+                break
+            time.sleep(.005)
+        self.assertIsNotNone(snapshot)
+        self.assertEqual(snapshot['call'], 0x80047EA0)
+        self.assertEqual(snapshot['phase'], 'vehicle_selection')
+        self.assertGreaterEqual(snapshot['seconds'], 1)
+        self.assertTrue(worker.is_alive())
+        cables[1].exchange(1, address1, 256 * 1024 * 1024)
+        worker.join(1)
+        self.assertFalse(worker.is_alive())
+        self.assertIsNone(cables[0].waiting_snapshot())
+        self.assertIsNone(cables[0].error)
+        self.assertIsNone(cables[1].error)
+
+    def test_disconnect_wakes_an_indefinite_serial_exchange(self):
+        cable = PeerCable(0, 99, lambda packet: None)
+        ram, address = mailbox(call=0x80047EA0)
+        worker = threading.Thread(target=lambda: cable.exchange(0, address, 256 * 1024 * 1024))
+        worker.start()
+        deadline = time.monotonic() + 1
+        while time.monotonic() < deadline and cable.waiting_snapshot() is None:
+            time.sleep(.005)
+        self.assertIsNotNone(cable.waiting_snapshot())
+        cable.stop('peer disconnected')
+        worker.join(1)
+        self.assertFalse(worker.is_alive())
+        self.assertIn('peer disconnected', cable.error)
+        self.assertEqual(struct.unpack_from('<H', ram, 0x47906)[0], 4)
+
     def test_role_wait_has_no_deadline_while_transport_is_alive(self):
         cable = PeerCable(0, 99, lambda packet: None)
         ram, address = mailbox(command=1, send=b'', expected=0)
@@ -47,6 +87,15 @@ class PeerCableTests(unittest.TestCase):
         cable.check_role_timeout()
         self.assertFalse(cable.stopped)
         self.assertEqual(struct.unpack_from('<H', ram, 0x47906)[0], 1)
+
+    def test_waiting_snapshot_distinguishes_online_mode_negotiation(self):
+        cable = PeerCable(0, 99, lambda packet: None)
+        ram, address = mailbox(command=1, send=b'', expected=0)
+        cable.exchange(0, address, 256 * 1024 * 1024)
+        snapshot = cable.waiting_snapshot()
+        self.assertEqual(snapshot['phase'], 'online_mode')
+        self.assertIsNone(snapshot['call'])
+        self.assertGreaterEqual(snapshot['seconds'], 0)
 
     def test_disconnect_still_fails_an_indefinite_role_wait(self):
         cable = PeerCable(0, 99, lambda packet: None)
@@ -87,6 +136,15 @@ class PeerCableTests(unittest.TestCase):
         self.assertTrue(all(any(e['event'] == 'role_cycle_reset' for e in c.role_events)
                             for c in cables))
 
+    def test_gameplay_marker_clears_when_main_menu_cycle_resets(self):
+        cable = PeerCable(0, 99, lambda packet: None)
+        ram, address = batch_mailbox([b'game'], [4])
+        cable._local_request(0, address, 256 * 1024 * 1024)
+        self.assertTrue(cable.match_active)
+        cable.role_agreed = True
+        self.assertTrue(cable.reset_role_cycle())
+        self.assertFalse(cable.match_active)
+
     def test_next_role_round_survives_asymmetric_main_menu_detection(self):
         cables = self.pair()
         allocations = []
@@ -106,10 +164,10 @@ class PeerCableTests(unittest.TestCase):
         self.assertEqual(struct.unpack_from('<H', early, 0x47906)[0], 3)
         self.assertEqual([c.role_round for c in cables], [2, 2])
 
-    def pair(self):
+    def pair(self, timeout=1):
         sides = [None, None]
-        sides[0] = PeerCable(0, 99, lambda packet: sides[1].receive(packet), timeout=1)
-        sides[1] = PeerCable(1, 99, lambda packet: sides[0].receive(packet), timeout=1)
+        sides[0] = PeerCable(0, 99, lambda packet: sides[1].receive(packet), timeout=timeout)
+        sides[1] = PeerCable(1, 99, lambda packet: sides[0].receive(packet), timeout=timeout)
         return sides
 
     def test_role_waits_for_peer_without_blocking_emulation(self):

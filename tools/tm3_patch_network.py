@@ -44,13 +44,14 @@ MAILBOX_COMMAND_TRANSFER = 2
 MAILBOX_COMMAND_BATCH_TRANSFER = 3
 MAILBOX_HEADER_SIZE = 112
 MAX_TRANSFER = 64 * 1024
+WAITING_CALLBACK_CALLS = (0x80047EA0, 0x80047EB8)
 
 REG = {
     "zero": 0, "v0": 2, "v1": 3,
     "a0": 4, "a1": 5, "a2": 6, "a3": 7,
     "t0": 8, "t1": 9, "t2": 10, "t3": 11,
     "t4": 12, "t5": 13, "t6": 14, "t7": 15,
-    "s0": 16, "s4": 20, "s6": 22,
+    "s0": 16, "s1": 17, "s4": 20, "s6": 22,
     "t8": 24, "t9": 25, "sp": 29, "ra": 31,
 }
 
@@ -111,13 +112,21 @@ class Assembler:
         return b"".join(struct.pack("<I", word) for word in self.words)
 
 
-def build_stub() -> bytes:
+def build_stub(mailbox_version: int = MAILBOX_VERSION) -> bytes:
     z, v0 = REG["zero"], REG["v0"]
     a0, a1, a2, a3 = (REG[name] for name in ("a0", "a1", "a2", "a3"))
     t0, t1, t2 = (REG[name] for name in ("t0", "t1", "t2"))
     ra = REG["ra"]
     asm = Assembler(FUNCTION_START)
     nop = 0
+    sp = REG["sp"]
+    # The two post-vehicle transfers run inside the SIO/menu routine, which
+    # keeps the original 0x800D3280 callback table in s1. Save ra because the
+    # callback uses jalr and this stub must still return to its caller.
+    asm.emit(i_type(0x09, sp, sp, -16))
+    asm.emit(i_type(0x2B, sp, a2, 0))
+    asm.emit(i_type(0x2B, sp, a3, 4))
+    asm.emit(i_type(0x2B, sp, ra, 12))
 
     # v5 publica punteros a los buffers reales de RAM. El frontend valida los
     # rangos y puede transportar hasta 64 KiB sin copiar byte a byte en MIPS.
@@ -135,7 +144,7 @@ def build_stub() -> bytes:
     asm.emit(i_type(0x0F, z, t1, MAILBOX_MAGIC >> 16))
     asm.emit(i_type(0x0D, t1, t1, MAILBOX_MAGIC & 0xFFFF))
     asm.emit(i_type(0x2B, t0, t1, 0))                     # magic
-    asm.emit(i_type(0x09, z, t1, MAILBOX_VERSION))
+    asm.emit(i_type(0x09, z, t1, mailbox_version))
     asm.emit(i_type(0x29, t0, t1, 4))                     # version
     asm.emit(i_type(0x09, z, t1, MAILBOX_COMMAND_TRANSFER))
     asm.emit(i_type(0x29, t0, t1, 8))                     # command
@@ -153,6 +162,11 @@ def build_stub() -> bytes:
     asm.emit(i_type(0x09, z, t1, 1))
     asm.emit(i_type(0x29, t0, t1, 6))
     asm.label("wait_loop")
+    # The game redraws WAITING FOR OTHER CONSOLE by calling s1[2]. During the
+    # vehicle-confirmation transfers, unlike the initial role loop, LinkTransfer
+    # owns the wait. Pump that callback only at its two verified call sites.
+    asm.emit(i_type(0x0F, z, t0, MAILBOX_ADDRESS >> 16))
+    asm.emit(i_type(0x0D, t0, t0, MAILBOX_ADDRESS & 0xFFFF))
     asm.emit(i_type(0x25, t0, t1, 6))                     # lhu t1,status
     asm.emit(i_type(0x09, z, t2, 3))
     asm.branch(0x04, t1, t2, "response_ready")
@@ -160,9 +174,29 @@ def build_stub() -> bytes:
     asm.emit(i_type(0x09, z, t2, 4))
     asm.branch(0x04, t1, t2, "failure")
     asm.emit(nop)
-    # La consola secundaria puede entrar mucho antes que el anfitrion. Mantiene
-    # la misma secuencia hasta recibir al par, igual que la espera del cable.
+    asm.emit(i_type(0x23, t0, t1, 28))                    # callSite
+    asm.emit(i_type(0x0F, z, t2, 0x8004))
+    asm.emit(i_type(0x0D, t2, t2, WAITING_CALLBACK_CALLS[0] & 0xFFFF))
+    asm.branch(0x04, t1, t2, "pump_waiting")
+    asm.emit(nop)
+    asm.emit(i_type(0x09, t2, t2, WAITING_CALLBACK_CALLS[1] - WAITING_CALLBACK_CALLS[0]))
+    asm.branch(0x04, t1, t2, "pump_waiting")
+    asm.emit(nop)
+    # Other transfers stay idle here; only the verified pre-game menu calls
+    # have a valid callback table in s1.
     asm.branch(0x04, z, z, "wait_loop")
+    asm.emit(nop)
+
+    asm.label("pump_waiting")
+    asm.emit(i_type(0x23, REG["s1"], v0, 8))              # callback table +8
+    asm.emit(nop)
+    asm.emit(r_type(v0, z, ra, 0, 0x09))                 # jalr v0
+    asm.emit(nop)
+    asm.emit(i_type(0x23, sp, a2, 0))                    # callback may clobber args
+    asm.emit(i_type(0x23, sp, a3, 4))
+    asm.branch(0x04, v0, z, "failure")                  # Triangle/back cancels
+    asm.emit(nop)
+    asm.branch(0x04, z, z, "wait_loop")                 # callback clobbers t0-t2
     asm.emit(nop)
 
     # El frontend ya escribió la respuesta directamente en a2.
@@ -174,6 +208,8 @@ def build_stub() -> bytes:
     asm.emit(nop)
     asm.emit(i_type(0x29, t0, z, 6))                     # status=IDLE
     asm.emit(i_type(0x09, z, v0, 1))
+    asm.emit(i_type(0x23, sp, ra, 12))
+    asm.emit(i_type(0x09, sp, sp, 16))
     asm.emit(r_type(ra, z, z, 0, 0x08))                  # jr ra
     asm.emit(nop)
 
@@ -184,6 +220,8 @@ def build_stub() -> bytes:
     asm.emit(i_type(0x0D, t0, t0, MAILBOX_ADDRESS & 0xFFFF))
     asm.emit(i_type(0x29, t0, z, 6))
     asm.emit(r_type(z, z, v0, 0, 0x21))                  # v0=0
+    asm.emit(i_type(0x23, sp, ra, 12))
+    asm.emit(i_type(0x09, sp, sp, 16))
     asm.emit(r_type(ra, z, z, 0, 0x08))
     asm.emit(nop)
 

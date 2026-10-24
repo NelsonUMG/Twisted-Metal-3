@@ -33,7 +33,8 @@ def directory_health():
     return value
 
 
-def start_runtime(side, bridge, assets, settings, fixture, output, frozen_exe=None):
+def start_runtime(side, bridge, assets, settings, fixture, output, frozen_exe=None,
+                  delay_online_ms=0, delay_vehicle_ms=0):
     state = output / f'state{side}.json'
     report = output / f'report{side}.json'
     screenshot = output / f'game{side}.bmp'
@@ -45,6 +46,8 @@ def start_runtime(side, bridge, assets, settings, fixture, output, frozen_exe=No
         '--side', str(side), '--assets', str(assets), '--settings', str(settings),
         '--state', str(state), '--qa-fixture', str(fixture), '--qa-report', str(report),
         '--qa-screenshot', str(screenshot), '--qa-resolution', '1',
+        '--qa-delay-online-ms', str(delay_online_ms),
+        '--qa-delay-vehicle-ms', str(delay_vehicle_ms),
         '--log-directory', str(log_directory)]
     environment = os.environ.copy()
     python_path = [str(ROOT/'network'), str(ROOT/'256mb system/src')]
@@ -104,22 +107,32 @@ def run(args):
         for side in (0, 1):
             runtimes.append(start_runtime(side, bridges[side], Path(args.guest_assets if side == 1 and args.guest_assets else args.assets).resolve(),
                 Path(args.settings).resolve(), Path(args.fixture).resolve(), output,
-                Path(args.frozen_exe).resolve() if args.frozen_exe else None))
+                Path(args.frozen_exe).resolve() if args.frozen_exe else None,
+                args.qa_delay_online_ms, args.qa_delay_vehicle_ms))
         wait_for_runtimes(runtimes, args.timeout)
         reports = [json.loads(item[3].read_text(encoding='utf-8')) for item in runtimes]
         ice = host.snapshot()
+        fixture_data = json.loads(Path(args.fixture).read_text(encoding='utf-8'))
+        required_waits = fixture_data.get('qa_wait_screens', [])
+        wait_captures = {phase: [r.get('wait_screenshots', {}).get(phase)
+                                 for r in reports
+                                 if r.get('wait_screenshots', {}).get(phase)]
+                         for phase in required_waits}
+        waits_visible = all(wait_captures.get(phase) for phase in required_waits)
         passed = all(r.get('completed') and r.get('architecture') == 'one_console_per_pc'
                      and r.get('local_core_count') == 1
                      and r.get('gameplay_ticks') == 600
                      and r.get('time_mismatches') == 0 and r.get('rng_mismatches') == 0
                      and not r.get('audio_error') and r.get('audio_started')
-                     and r.get('video_frames_rendered', 0) > 0 for r in reports)
+                     and r.get('video_frames_rendered', 0) > 0 for r in reports) and waits_visible
         result = dict(passed=passed, test='real ICE/DTLS/SCTP cable exchange; same-PC two-process peers',
             external_wan=False, cloudflare_directory=health,
             ice=dict(connected=host.connected.is_set() and guest.connected.is_set(),
                      candidates=ice.get('candidates'), selected=ice.get('selected'),
                      rtt=ice.get('latency')),
             reports=reports,
+            required_wait_phases=required_waits,
+            waiting_screenshots=wait_captures,
             screenshots=[str(item[4]) for item in runtimes],
             logs=[str(output / f'process{side}.log') for side in (0, 1)])
         (output / 'result.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
@@ -150,6 +163,10 @@ def main():
     parser.add_argument('--output')
     parser.add_argument('--frozen-exe', help='Run the real portable frozen executable instead of Python source.')
     parser.add_argument('--timeout', type=int, default=180)
+    parser.add_argument('--qa-delay-online-ms', type=int, default=0,
+                        help='Test-only delay for the peer online-mode handshake.')
+    parser.add_argument('--qa-delay-vehicle-ms', type=int, default=0,
+                        help='Test-only delay for the peer vehicle-select transfer.')
     args = parser.parse_args()
     for path in (Path(args.assets)/'beetle_psx_system256.dll',
                  Path(args.assets)/'TM3_SYSTEM256.cue', Path(args.fixture), Path(args.settings)):

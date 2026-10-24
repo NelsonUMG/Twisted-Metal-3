@@ -17,13 +17,16 @@ VERSION = 1
 MAX_PAYLOAD = 64 * 1024
 MAX_QUEUED_REMOTE = 32
 GAMEPLAY_CALL = 0x8003AA98
+# A real PS1 serial exchange has no wall-clock deadline. Online cable calls
+# therefore wait until the peer reaches the matching request or the transport
+# itself closes. A finite timeout remains injectable for isolated tests.
 ROLE = struct.Struct('!4sQBI')
 
 
 class PeerCable:
     """Synchronous ABI-6 cable endpoint for exactly one local console."""
 
-    def __init__(self, side, epoch, send_packet, timeout=30.0):
+    def __init__(self, side, epoch, send_packet, timeout=None):
         if side not in (0, 1) or not 0 < epoch < 2**64:
             raise ValueError('Invalid peer cable identity')
         self.side, self.epoch = side, epoch
@@ -39,6 +42,7 @@ class PeerCable:
         self.stopped = False
         self.exchanges = 0
         self.gameplay = 0
+        self.match_active = False
         self.time_mismatches = 0
         self.rng_mismatches = 0
         self.last_tail = None
@@ -71,6 +75,20 @@ class PeerCable:
         """
         return None
 
+    def waiting_snapshot(self):
+        """Return the current cable wait, distinguishing menus from gameplay."""
+        with self.condition:
+            if self.role_pending is not None and not self.role_agreed:
+                return dict(phase='online_mode', call=None,
+                            seconds=max(0.0, time.monotonic() - self.role_pending[1]))
+            if self.pending is None or self.pending['done']:
+                return None
+            call = self.pending['call']
+            phase = ('vehicle_selection' if call in (0x80047EA0, 0x80047EB8)
+                     else 'cable_transfer')
+            return dict(phase=phase, call=call,
+                        seconds=max(0.0, time.monotonic() - self.pending['started']))
+
     def _finish_role(self):
         if self.role_pending and self.remote_role_round >= self.role_round:
             header, _started = self.role_pending
@@ -87,6 +105,7 @@ class PeerCable:
             if not self.role_agreed or self.role_pending:
                 return False
             self.role_agreed = False
+            self.match_active = False
             self._role_event('role_cycle_reset')
             return True
 
@@ -132,6 +151,8 @@ class PeerCable:
                 self._finish_role()
             self.send_packet(ROLE.pack(b'T3R1', self.epoch, self.side, self.role_round))
             return None
+        if call == GAMEPLAY_CALL:
+            self.match_active = True
         if command == 2:
             send_address, recv_address = struct.unpack_from('<II', header, 32)
             sends = [(send_address, send_n)]
@@ -191,18 +212,18 @@ class PeerCable:
                     self._pair(request, remote)
             self.send_packet(request['wire'])
             self.bytes_sent += len(request['wire'])
-            deadline = time.monotonic() + self.timeout
+            deadline = time.monotonic() + self.timeout if self.timeout is not None else None
             with self.condition:
                 while not request['done'] and not self.stopped:
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0:
+                    remaining = deadline - time.monotonic() if deadline is not None else None
+                    if remaining is not None and remaining <= 0:
                         raise TimeoutError(
                             f'P2P cable timeout: role={self.side} key={self._key(request)} '
                             f'wait_seconds={self.timeout} exchanges={self.exchanges} '
                             f'remote_sequence={self.remote_sequence} '
                             f'queued_remote_keys={list(self.remote)} '
                             f'bytes_sent={self.bytes_sent} bytes_received={self.bytes_received}')
-                    self.condition.wait(min(remaining, 0.1))
+                    self.condition.wait(min(remaining, 0.1) if remaining is not None else 0.1)
                 if not request['done']:
                     raise RuntimeError(self.error or 'P2P cable stopped')
             self.wait_ms.append(round((time.monotonic() - request['started']) * 1000, 3))
